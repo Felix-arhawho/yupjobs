@@ -1,0 +1,264 @@
+﻿@using SharedLib.Models;
+@using BlazorInputFile
+
+@page "/profile/edit"
+
+@if (IsLoading)
+{
+    <Loader />
+}
+else
+{
+    <h1 class="top-header">Edit profile</h1>
+    <div class="form-wrapper white-bg">
+        <form @onsubmit="SaveInfo">
+
+            <div class="form-group">
+                <label for="Username">Public username</label>
+                <input type="text" class="form-control" id="Username" placeholder="Enter public username" @bind="Session.Profile.Username" disabled>
+            </div>
+            <div class="form-group">
+                <label for="Email">Email</label>
+                <input type="email" class="form-control" id="Email" placeholder="Enter public username" @bind="NewProfile.Email" >
+            </div>
+            <div class="form-group">
+                <label for="FirstName">First name</label>
+                <input type="text" class="form-control" id="FirstName" placeholder="Enter first name" value="@Session.Profile.FirstName" disabled>
+            </div>
+            <div class="form-group">
+                <label for="LastName">Last name</label>
+                <input type="text" class="form-control" id="LastName" placeholder="Enter last name" value="@Session.Profile.LastName" disabled>
+            </div>
+            <div class="form-group">
+                <label for="DoB">Date of birth</label>
+                <input type="date" class="form-control" id="DoB" name="DoB" @bind="Session.Profile.DoB" disabled>
+            </div>
+            <div class="form-group">
+                <center>
+                    <label for="reqch">Request personal information change</label>
+                    <button class="btn btn-block btn-info" name="reqch" @onclick="@(()=>NavMan.NavigateTo("/support/four"))">Request</button>
+                </center>
+            </div>
+            <div class="form-group">
+                <div class="container-fluid">
+
+                    <img style="max-height:10rem; max-width:15rem;" src="@NewProfile.ProfilePicture" />
+                </div>
+                <label for="ProfilePics">Profile Picture</label>
+                <input type="file" class="form-control-file"
+                       style="border-radius: 15px"
+                       id="ProfilePics" name="ProfilePics" accept="image/png, image/jpeg, image/webp"
+                       @ref="_profilePic" @onchange="UploadImage">
+            </div>
+            <div class="form-group">
+                <label for="Bio">Describe yourself</label>
+                <textarea class="form-control" name="Bio" @bind="NewProfile.TextBio"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="ProfilePics">Info Pictures (Max 4)</label>
+                <input type="file" class="form-control-file"
+                       style="border-radius: 15px"
+                       id="ProfilePics" name="ProfilePics" accept="image/png, image/jpeg, image/webp"
+                       @ref="_infoPics" multiple>
+                <hr />
+                <button @onclick="UploadPics" class="btn btn-outline-success">Upload images</button>
+                <hr />
+                @*<DragDrop Action2="async()=>await InvokeAsync(StateHasChanged)"/>*@
+                @*<button @onclick="UploadDragDrop" class="btn btn-outline-success">Upload images</button>
+            <hr />*@
+                <div class="container-fluid">
+                    @foreach (var pic in NewProfile.InfoPics.Take(4))
+                    {
+                        <img src="@pic" style="max-width: 8rem" />
+                        <button class="btn btn-danger" @onclick="()=>NewProfile.InfoPics.Remove(pic)">X</button>
+                    }
+                </div>
+                <hr />
+                <label for="skills">Skills (Separate skills/tags with a comma ',')</label>
+                <hr />
+                <div>
+                    @foreach (var skill in NewProfile.Skills)
+                    {
+                        <span class="tag" @onclick="()=>NewProfile.Skills.Remove(skill)">@skill.TagName</span>
+                    }
+                </div>
+                <hr />
+                <input type="text" class="form-control" id="skills" placeholder="Enter skills"
+                       @bind-value="newSkill"
+                       @bind-value:event="oninput"
+                       @onkeyup="getSkills">
+                <div>
+                    @foreach (var tag in ProposedTags)
+                    {
+                        if (NewProfile.Skills.Contains(tag)) continue;
+                        <span class="tag" @onclick="()=>NewProfile.Skills.Add(tag)">@tag.TagName - <b>@tag.UseCount</b></span>
+                    }
+                </div>
+            </div>
+            <hr />
+            <button type="submit" class="btn btn-info">Save profile info</button>
+        </form>
+    </div>
+}
+
+@code {
+
+    bool IsLoading = true;
+
+    string newUsername = Session.User.Username;
+    string newEmail = Session.User.Email;
+    string newPic = Session.Profile.ProfilePicture;
+    //string newBio = Session.Profile.TextBio;
+    //public static List<string> newPics = Session.Profile.InfoPics;
+
+    SharedLib.Models.Profile NewProfile = Session.Profile;
+
+    [Inject]
+    public IFileReaderService FileReaderService { get; set; }
+
+    async Task SaveInfo()
+    {
+        IsLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        //NewProfile.Username = newUsername;
+        //NewProfile.Email = newEmail;
+        //NewProfile.ProfilePicture = newPic;
+        //NewProfile.TextBio = newBio;
+        NewProfile.InfoPics = NewProfile.InfoPics.Take(4).ToList();
+        //NewProfile.ProfilePics = newPics;
+
+
+        using var resp = await Ez.GetHttpPostResponse($"account/updateaccount", new Dictionary<string, string>
+        {
+            {"jprofile", NewProfile.ToJson() },
+            {"juser", Session.User.ToJson() }
+        });
+
+        IsLoading = false;
+        await InvokeAsync(StateHasChanged);
+
+        DragDrop.ImagesOutput.Clear();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        short cnt = 0;
+        while (!Session.GotInfo && Session.LoggedIn)
+        {
+            await Task.Delay(1000);
+            if (cnt > 6)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+            cnt++;
+        }
+        NewProfile = Session.Profile;
+        //NewProfile.TextBio = Session.Profile.TextBio;
+
+        IsLoading = false;
+
+        await base.OnInitializedAsync();
+    }
+
+    //[Inject] public IFileReaderService FileReaderService { get; set; }
+
+    private ElementReference _profilePic = new ElementReference();
+    private ElementReference _infoPics = new ElementReference();
+
+    async Task UploadImage()
+    {
+        var profilePics = await FileReaderService.CreateReference(_profilePic).EnumerateFilesAsync();
+        var pic = profilePics.FirstOrDefault();
+        if (pic is null)
+        {
+            ToastService.ShowToast("There was an error posting you image", ToastLevel.Error);
+            return;
+        };
+
+        using var resp = await pic.PostImage(MediaType.AccountImage);
+        if (resp.IsSuccessStatusCode)
+            NewProfile.ProfilePicture = await resp.Content.ReadAsStringAsync();
+    }
+
+
+    short UploadCount = 1;
+    async Task UploadPics()
+    {
+        try
+        {
+            foreach (var pic in await FileReaderService.CreateReference(_infoPics).EnumerateFilesAsync())
+            {
+                try
+                {
+                    if (UploadCount > 3) break;
+
+                    using var resp = await pic.PostImage(MediaType.AccountImage);
+                    if (resp.IsSuccessStatusCode)
+                    {
+                        NewProfile.InfoPics.Add(await resp.Content.ReadAsStringAsync());
+                        await InvokeAsync(StateHasChanged);
+
+                        UploadCount++;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine(e);
+                }
+            }
+        }catch (Exception e)
+        {
+            Debug.WriteLine(e);
+        }
+    }
+    //private List<IFileListEntry> _selectedFiles;
+
+
+    //async Task UploadDragDrop()
+    //{
+
+    //    foreach (var pic in _selectedFiles)
+    //    {
+    //        Console.WriteLine(string.Join(", ", pic));
+    //    }
+    //}
+
+
+    int currentReqs = 0;
+    async Task getSkills()
+    {
+        try
+        {
+            if (/*newSkill.Last() is ' ' ||*/ newSkill.Trim().Last() is ',')
+            {
+                newSkill = new string(newSkill.Trim(','));
+                Session.Profile.Skills.Add(
+                        new DbTag()
+                        {
+                            TagName = newSkill.Trim(),
+                            UseCount = 0
+                        }
+                    );
+                newSkill = string.Empty;
+            }
+        }
+        catch { }
+
+        if (currentReqs > 1) return;
+        while (currentReqs > 0)
+            await Task.Delay(1000);
+
+        System.Threading.Interlocked.Increment(ref currentReqs);
+
+        using var resp = await Ez.GetHttpPostResponse($"tags/get/{newSkill}");
+        if (resp.IsSuccessStatusCode)
+            ProposedTags = (await resp.Content.ReadAsStringAsync()).FromJson<List<DbTag>>();
+
+        System.Threading.Interlocked.Decrement(ref currentReqs);
+    }
+
+    string newSkill = string.Empty;
+    List<DbTag> ProposedTags = new List<DbTag>();
+}

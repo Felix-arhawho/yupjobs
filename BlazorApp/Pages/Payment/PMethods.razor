@@ -1,0 +1,75 @@
+﻿@page "/listmethods"
+@*@using System.Linq*@
+@*@using System.Collections.Generic*@
+
+@if (Loading)
+{
+    <Loader />
+}
+else if (AddMethod)
+{
+    <AddPaymentMethod ResetAction="async ()=> { AddMethod = false; await Session.RefreshPaymentMethods(); await InvokeAsync(StateHasChanged); }" />
+}
+else
+{
+    <div class="card-wrapper">
+        <div class="card-header">
+            
+        </div>
+        <div class="card-body">
+            <label for="payment-method-list">All your methods</label>
+            <div id="payment-method-list">
+                @foreach (var method in Session.UserPaymentMethods)
+                {
+                    if (method.Type is MethodType.Sofort || method.Type is MethodType.Przelewy24 || method.Type is MethodType.StripeInvoice)
+                        continue;
+                    
+                    <div @onclick="()=> SelectedMethod = method" >
+                        <BlazorApp.Pages.Payment.PaymentMethod Method="method" Selected="false" />
+                    </div>
+                    <div>
+                        <button class="btn btn-danger btn-block" @onclick="@(async ()=>
+                                                                     {
+                                                                         using var resp = await Ez.GetHttpPostResponse(
+                                                                             "money/remove",
+                                                                             new Dictionary<string, string>
+                                                                         {
+                                                                             {"id", method.Id }
+                                                                         });
+                                                                         Session.UserPaymentMethods.RemoveAll(x => x.Id == method.Id);
+                                                                         await InvokeAsync(StateHasChanged);
+                                                                     })">Remove method</button>                                                                                                     
+                    </div>
+                    <hr />
+                }
+            </div>
+        </div>
+        <div class="card-footer">
+            <button class="btn btn-info btn-lg btn-block" @onclick="()=>AddMethod=true">Add method</button>
+        </div>
+    </div>
+}
+
+@code {
+    UserPaymentMethod SelectedMethod = new UserPaymentMethod();
+    bool AddMethod = false;
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+            if (cnt > 5)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+            cnt++;
+        }
+        Loading = false;
+
+        await base.OnInitializedAsync();
+    }
+}

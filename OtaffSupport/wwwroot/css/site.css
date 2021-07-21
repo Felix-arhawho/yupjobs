@@ -1,0 +1,148 @@
+@import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
+
+body {
+    min-height: 100vh;
+    background: #f1f1f1;
+}
+html, body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+a, .btn-link {
+    color: #0366d6;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
+}
+
+.content {
+    padding-top: 1.1rem;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #26b050;
+}
+
+.invalid {
+    outline: 1px solid red;
+}
+
+.validation-message {
+    color: red;
+}
+
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+form.auth-form {
+    max-width: 300px;
+    margin: 15px auto;
+    padding: 30px;
+    background: #fff;
+    border-radius: 5px;
+}
+form.auth-form h2 {
+    text-align: center;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(0,0,0,.15);
+    padding-bottom: 10px;
+    margin: 0 0 10px;
+}
+form.auth-form label {
+    margin-bottom: 0;
+    margin-top: 15px;
+    font-size: .8rem;
+    font-weight: bold;
+}
+
+form.auth-form label:first-of-type {
+    margin-top: 0;
+}
+form.auth-form .btn {
+    margin-top: 20px;
+}
+
+.ticketpool {
+    text-align: left;
+    background: #fff;
+    padding: 30px;
+    margin-bottom: 20px;
+}
+
+.messages {
+    text-align: left;
+    margin: 20px 0;
+}
+
+.messages .message {
+background: #fff;
+padding: 15px;
+border-radius: 20px;
+margin-bottom: 10px;
+}
+
+.messages .message p {
+margin: 0;
+font-size: 1.2rem;
+}
+
+.messages .message .name {
+font-weight: bold;
+color: #666;
+font-size: .8rem;
+}
+
+.messages .message hr {
+margin: 5px 0 15px 0
+}
+
+.messages .message.me {
+background: #666;
+color: #fff;
+}
+
+.messages .message.me .name {
+color: #fff;
+}
+.messages .message.me hr {
+    border-color: #f1f1f1;
+}
+.respond {
+    display: flex;
+    width: 100%;
+}
+.respond textarea {
+    width: calc(100% - 150px);
+    padding: 10px 15px;
+    border: none;
+}
+.respond .btn {
+    width: 150px;
+    border-radius: 0;
+    font-size: 1.2rem;
+}
+.report p {
+    margin-bottom: 0;
+}
+.report h4 {
+    margin-bottom: 25px;
+}

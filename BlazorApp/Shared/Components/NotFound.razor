@@ -1,0 +1,29 @@
+﻿@page "/notfound"
+
+<h1 class="top-header">Error 404</h1>
+<div class="card-wrapper">
+    <div class="card-body white-bg">
+        <div class="container-fluid text-center">
+            <h3 style="font-size: 24px;"><b>@Message</b></h3>
+        </div>
+        <div class="container-fluid">
+            <div class="align-content-center" style="display: flex; align-items: center;justify-content: center;">
+                @foreach (var action in Actions)
+                {
+                    <a class="btn btn-danger m-1 m-md-3" style="align-self: center; position: center" href="@action.Item2">@action.Item1</a>
+                }
+            </div>
+        </div>
+    </div>
+</div> 
+
+@code {
+
+    [Parameter] public string Message { get; set; } = "Page not found";
+    [Parameter] public List<Tuple<string, string>> Actions { get; set; } = new List<Tuple<string, string>>()
+    {
+        new Tuple<string, string>("Home", "/"),
+        new Tuple<string, string>("Find jobs", "/jobs"),
+        new Tuple<string, string>("Find workers", "/workers")
+    };
+}

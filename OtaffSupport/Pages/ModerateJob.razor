@@ -1,0 +1,123 @@
+﻿@page "/modjob"
+@page "/modjob/{JobId}"  
+<h3>Moderate Job</h3>
+
+<input placeholder="Job ID" @bind="JobId"/>
+<button @onclick="@(()=>
+                    {
+                        Loading = true;
+                        InvokeAsync(StateHasChanged).Wait();
+                        Job = Db.OngoingJobsCollection.First(x => x.Id==JobId) ?? Db.ArchivedJobsCollection.First(x=>x.Id==JobId);
+                        Loading = false;
+                        JobFound = Job != null;
+                        InvokeAsync(StateHasChanged).Wait();
+                    })">Search</button>
+@if (Loading)
+{
+    <Loader/>
+}
+else if (JobFound)
+{
+<div class="container-fluid">
+    <h4>@Job.JobTitle</h4>
+    <hr />
+    <p>@JsonConvert.SerializeObject(Job.OriginalPost, Formatting.Indented)</p>
+    @{
+        var job = Job;
+        job.OriginalPost = null;
+    }
+    <p>@JsonConvert.SerializeObject(job, Formatting.Indented)</p>
+    <hr />
+    <div class="container">
+        @foreach (var i in Db.JobPaymentsCollection.All(x => x.JobId == job.Id))
+        {
+        <div class="container">
+            <h4>@i.PaymentTitle - @i.TransferAmount - @i.Currency</h4>
+            <hr />
+            <h5>Created on: @i.DateCreated.ToShortDateString()</h5><br />
+            <h5>Released: @i.Released @(i.Released ? $"on {i.DateReleased.Value.ToShortDateString()}" : string.Empty)</h5>
+            @if (!i.Released)
+            {
+                if (ReleaseConfirmed)
+                {
+                    <button @onclick="@(() =>
+                                    {
+                                        var user = Db.UsersCollection.FirstAsync(x => Job.EmployeeId == x.Id);
+                                        using var s = Db.Client.StartSession();
+                                        s.StartTransaction();
+                                        Db.JobPaymentsCollection.UpdateOne(s, x=>x.Id==i.Id, new UpdateDefinitionBuilder<JobPayment>().Set(x=>x.Released, true).Set(x=>x.DateReleased, DateTime.UtcNow));
+                                        _ = WalletCtl.CreateTransferFromPlatform(user.Result, i.Currency, i.TransferAmount, 0.043f, s);
+                                        s.CommitTransaction();
+                                        InvokeAsync(StateHasChanged);
+                                    })">
+                        Confirm
+                    </button>
+                }
+                else
+                {
+                    <button @onclick="() => ReleaseConfirmed = true">Release</button>
+                }
+                @if (CancelConfirm)
+                {
+                    <button @onclick="@(()=>
+                                    {
+                                        var user = Db.UsersCollection.FirstAsync(x => x.Id == i.EmployerId);
+                                        using var s = Db.Client.StartSession();
+                                        s.StartTransaction();
+                                        Db.JobPaymentsCollection.DeleteOne(s, x => x.Id == i.Id);
+                                        _ = WalletCtl.CreateTransferFromPlatform(user.Result, i.Currency, i.TransferAmount, 0, s);
+                                        Db.StaffActions.InsertOne(s, new StaffAction
+                                        {
+                                            Data = new Dictionary<string, dynamic>
+                                            {
+                                                {"description", $"Removed payment for job {Job.Id}" }
+                                            },
+                                            Date = DateTime.UtcNow,
+                                            StaffId = StaffUser.Id
+                                        });
+                                        s.CommitTransaction();
+                                        InvokeAsync(StateHasChanged);
+                                    })">
+                        Confirm
+                    </button>
+                }
+                else
+                {
+                    <button @onclick="() => CancelConfirm = true">Cancel</button>
+                }
+            }
+        </div>
+        }
+    </div>
+    <button @onclick="@(()=>NavMan.NavigateTo($"/chat/{Job.ConversationId}"))">Go to job chat</button>
+    <button>Solve job</button>
+    <hr />
+</div>
+}
+
+
+
+@code { 
+    bool ReleaseConfirmed = false;
+    bool CancelConfirm = false;
+
+    StaffUser StaffUser = new StaffUser();
+    bool Loading = true;
+    protected override async Task OnInitializedAsync()
+    {
+        StaffUser = await StorageService.GetItemAsync<StaffUser>("user");
+
+        if (JobId != null)
+        {
+            Job = Db.OngoingJobsCollection.First(x => x.Id == JobId);
+            if (Job != null) JobFound = true;
+        }
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    public Job Job { get; set; } = null;
+    [Parameter] public string JobId { get; set; }
+    bool JobFound = false;
+}

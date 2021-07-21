@@ -1,0 +1,113 @@
+﻿@using SharedLib.Models;
+@page "/support/ticket/{Id}"
+
+@if (Loading)
+{
+    <Loader/>
+}
+else
+{
+    <h1 class="top-header">Support ticket # @STicket.Id</h1>
+    <div class="white-bg">
+        <p>Date: @STicket.DateSent.ToShortDateString() : @STicket.DateSent.ToShortTimeString()</p>
+        <h4>Message:</h4>
+        <p>@STicket.Message</p>
+        <hr />
+        <h4>Comments:</h4>
+        <div class="ticket-comments">
+            @foreach (var msg in Messages)
+            {
+                <div class="ticket-comment">
+                    <span>Date: @msg.Date.ToShortDateString() @msg.Date.ToShortTimeString()</span>
+                    <p>@msg.Message</p>
+                </div>
+            }
+        </div>
+        <hr />
+        <h4>Add new response</h4>
+        <form @onsubmit="Submit">
+            <div class="form-group">
+                <label for="message">Your message</label>
+                <textarea class="form-control" id="message" @bind="NewMessage.Message" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-info">Send</button>
+        </form>
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; }
+
+    bool Loading = true;
+
+    SharedLib.Models.SupportTicket STicket = new SharedLib.Models.SupportTicket();
+    List<TicketMessage> Messages = new List<TicketMessage>();
+
+    TicketMessage NewMessage = new TicketMessage();
+
+    async Task Submit()
+    {
+        Loading = true;
+        await InvokeAsync(StateHasChanged);
+
+        using var resp = await Ez.GetHttpPostResponse("support/sendmessage", new Dictionary<string, string>
+        {
+            {"jmessage", NewMessage.ToJson() },
+            {"id", Id }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            using var resp2 = await Ez.GetHttpPostResponse("support/tickets", new Dictionary<string, string>()
+            {
+                {"id", Id }
+            });
+
+            if (resp2.IsSuccessStatusCode)
+            {
+                var obj = JObject.Parse(await resp2.Content.ReadAsStringAsync());
+
+                Debug.WriteLine(obj.ToString());
+                STicket = obj["ticket"].ToObject<SharedLib.Models.SupportTicket>();
+                Messages = obj["messages"].ToObject<List<TicketMessage>>();
+                NewMessage = new TicketMessage();
+            }
+            //NavMan.NavigateTo($"support/ticket/{await resp.Content.ReadAsStringAsync()}");
+        }
+
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            cnt++;
+            await Task.Delay(1000);
+            if (cnt > 10)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+        }
+
+        using var resp = await Ez.GetHttpPostResponse("support/tickets", new Dictionary<string, string>()
+        {
+            {"id", Id }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            var obj = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+            Debug.WriteLine(obj.ToString());
+            STicket = obj["ticket"].ToObject<SharedLib.Models.SupportTicket>();
+            Messages = obj["messages"].ToObject<List<TicketMessage>>();
+        }
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

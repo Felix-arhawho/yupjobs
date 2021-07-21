@@ -1,0 +1,64 @@
+﻿
+@page "/wallet/transaction-history"
+
+<h1 class="top-header">Transaction history</h1>
+<div class="">
+    <div class="table-responsive">
+        <table class="table white-bg">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 50px;">#</th>
+                    <th scope="col" style="min-width: 150px; max-width:150px;">Date</th>
+                    <th scope="col" style="min-width: 150px;">Status</th>
+                    <th scope="col" style="min-width: 150px;">Amount</th>
+                    <th scope="col" style="min-width: 250px;">Sender username</th>
+                    <th scope="col" style="min-width: 250px;">Receiver username</th>
+                    <th scope="col" style="min-width: 250px;">Error message</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var cnt = 1;}
+                @foreach (var i in TransactionsLs.OrderByDescending(x=>x.DateCompleted))
+                {
+                    <tr>
+                        <th scope="row">@cnt</th>
+                        <td>@i.DateInitiated.ToShortDateString()</td>
+                        <td>@i.Status</td>
+                        <td>@i.Amount @i.Currency</td>
+                        <td>@i.SenderUsername</td>
+                        <td>@i.ReceiverUsername</td>
+                        <td>@i.FailReason</td>
+                    </tr>
+                    cnt++;
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code{  
+    bool Loading = true;
+    List<WalletTransaction> TransactionsLs = new List<WalletTransaction>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+            if (cnt > 6)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+        }
+
+        var resp = await Ez.GetHttpPostResponse("money/transactions");
+        if (resp.IsSuccessStatusCode)
+            TransactionsLs = (await resp.Content.ReadAsStringAsync()).FromJson<List<WalletTransaction>>();
+
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

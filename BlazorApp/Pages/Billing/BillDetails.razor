@@ -1,0 +1,59 @@
+﻿@page "/bill/{Id}/details"
+
+@if (Loading)
+{
+    <Loader/>
+}
+else
+{
+    <h1 class="top-header">Bill #123</h1>
+    <div class="white-bg wallet">
+        <h4>Description:</h4>
+        <p>@Bill.Description</p>
+        <hr />
+        <h4>Method type:</h4>
+        <p>@Bill.MethodType.GetName()</p>
+        <hr />
+        <h4>Date:</h4>
+        <p>@Bill.DateIssued.ToLongDateString()</p>
+        <hr />
+        <h4>Status:</h4>
+        <p>@Bill.Status</p>
+        <hr />
+        <div class="d-flex flex-wrap justify-content-between">
+            <div>
+                <h4>Total requested:</h4>
+                <p>@Bill.TotalAmountRequested @Bill.Currency</p>
+            </div>
+            <div>
+                <h4>Total paid:</h4>
+                <p>@Bill.TotalAmountAllocated @Bill.Currency</p>
+            </div>
+        </div>
+        @if (!Bill.Paid && Bill.ToPayIfFailed && (Bill.Status == SPaymentStatus.MethodRequired || Bill.Status == SPaymentStatus.Fail))
+        {
+            <hr />
+            <button class="btn btn-info btn-block" @onclick="@(()=>NavMan.NavigateTo($"/bill/{Bill.Id}/pay"))">Pay bill (@(Bill.TotalAmountRequested+Bill.FailFees.Sum()) @Bill.Currency)</button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; }
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse($"billing/get", new Dictionary<string, string>()
+    {
+            {"id", Id }
+        });
+        if (resp.IsSuccessStatusCode)
+            Bill = (await resp.Content.ReadAsStringAsync()).FromJson<UserBill>();
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    public UserBill Bill { get; set; }
+}

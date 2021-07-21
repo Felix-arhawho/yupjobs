@@ -1,0 +1,51 @@
+﻿@*@page "/jobs/job/hire"*@
+
+<div class="white-bg text-center p-5">
+    <h4>Hire @Application.Username for a job:<br/> <a href="#">@Post.Title</a>?</h4>
+    <hr/>
+    <label for="sbmt">@error</label>
+    <div name="sbmt">
+        <a class="btn btn-lg btn-success" @onclick="@(async ()=>
+                                                      {
+                                                          if (IsSearch)
+                                                          {
+                                                              using var resp = await Ez.GetHttpPostResponse($"job/hiresearch", new Dictionary<string, string>
+                                                              {
+                                                                  {"employeeId", Application.UserId},
+                                                                  {"jobName", $"Job {Guid.NewGuid()} - {DateTime.UtcNow.Print()}" },
+                                                              });
+
+                                                              if (resp.IsSuccessStatusCode) NavMan.NavigateTo($"/job/ongoing/{await resp.Content.ReadAsStringAsync()}");
+                                                              else error = await resp.Content.ReadAsStringAsync();
+
+                                                          }
+                                                          else
+                                                          {
+                                                              using var resp = await Ez.GetHttpPostResponse($"job/hire", new Dictionary<string, string>
+                                                              {
+                                                                  {"appId", Application.Id },
+                                                                  {"postId", Post.Id },
+                                                              });
+
+                                                              if (resp.IsSuccessStatusCode) NavMan.NavigateTo($"/job/ongoing/{await resp.Content.ReadAsStringAsync()}");
+                                                              else error = await resp.Content.ReadAsStringAsync();
+
+                                                          }
+                                                          ResetAction();
+                                                      })">Yes</a>
+        <a href="@(IsSearch ? $"/post/hire/{Post.Id}" : $"/looking-for-jobs/details/{Post.Id}")" class="btn btn-lg btn-danger ml-2">No</a>
+    </div>
+</div>
+
+@code {
+    [Parameter] public JobApply Application { get; set; }
+    [Parameter] public SharedLib.Models.JobPost Post { get; set; }
+    [Parameter] public Action ResetAction { get; set; }
+
+    string error = string.Empty;
+
+    [Parameter] public bool IsSearch { get; set; } = false;
+
+    //[Parameter] public SearchProposal Proposal { get; set; } = null;
+    //[Parameter] public bool IsSearch { get; set; } = false;
+}

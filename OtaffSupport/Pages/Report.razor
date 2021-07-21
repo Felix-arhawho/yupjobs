@@ -1,0 +1,120 @@
+﻿@page "/report/{Id}"
+
+@if (Loading)
+{
+    <Loader/>
+}
+else
+{
+    <center><h3>Report</h3></center>
+    <hr />
+    <div class="container-fluid ticketpool report">
+        <p>Info: @ReportObj.Reason</p>
+        <h4>Type: @ReportObj.Type</h4>
+        @switch (ReportObj.Type)
+        {
+            case ReportType.JobPost:
+                <a href="@($"https://yupjobs.net/job/hire/{ReportObj.TargetId}")" target="_blank" class="btn btn-success btn-block">View</a>
+                <hr />
+                if (ConfirmDelete)
+                {
+                    <label>Please enter takedown reason</label>
+                    <input @bind="reason" class="form-control" placeholder="Takedown Reason" />
+                    <hr />
+                    <h3>Are you sure?</h3>
+                    <div class="btn-group">
+                        <button class="btn btn-success" @onclick="@(() =>
+                                                                    {
+                                                                        var post = Db.JobPostsCollection.First(x => x.Id == ReportObj.Id);
+                                                                        Db.JobPostsCollection.DeleteOne(x => x.Id == ReportObj.TargetId);
+                                                                        Db.NotificationsCollections.InsertOne(new Notification
+                                                                        {
+                                                                            Description = $"{reason}",
+                                                                            UserId = post.UserId,
+                                                                            Date = DateTime.UtcNow,
+                                                                            Title = "Your post has been taken down",
+                                                                        });
+                                                                    })">
+                            Confirm
+                        </button>
+                        <button class="btn btn-danger" @onclick="() => ConfirmDelete = false">Cancel</button>
+                    </div>
+                }
+                else
+                {
+                    <button class="btn btn-danger btn-block">Delete post</button>
+                }
+                break;
+            case ReportType.JobSearchPost:
+                <a href="@($"https://yupjobs.net/looking-for-jobs/details/{ReportObj.TargetId}")" target="_blank" class="btn btn-success btn-block">View</a>
+                <hr />
+                <label>Please enter takedown reason</label>
+                <input @bind="reason" class="form-control" placeholder="Takedown Reason" />
+                <hr />
+                <h3>Are you sure?</h3>
+                <div class="btn-group">
+                    <button class="btn btn-success" @onclick="@(() =>
+                                                                    {
+                                                                        var post = Db.JobPostsCollection.First(x => x.Id == ReportObj.Id);
+                                                                        Db.JobSearchPostsCollection.DeleteOne(x => x.Id == ReportObj.TargetId);
+                                                                        Db.NotificationsCollections.InsertOne(new Notification
+                                                                        {
+                                                                            Description = $"{reason}",
+                                                                            UserId = post.UserId,
+                                                                            Date = DateTime.UtcNow,
+                                                                            Title = "Your post has been taken down",
+                                                                        });
+                                                                    })">
+                        Confirm
+                    </button>
+                    <button class="btn btn-danger" @onclick="() => ConfirmDelete = false">Cancel</button>
+                </div>
+                break;
+            case ReportType.User:
+                var profile = Db.ProfilesCollection.Find(x => x.Id == ReportObj.TargetId).FirstOrDefault();
+                <h4>@profile.Username - Profile Id: @profile.UserId - User Id = @profile.UserId</h4><br />
+                <h5>DoB: @profile.DoB.ToShortDateString()</h5><br />
+                <hr />
+                <img src="@profile.ProfilePicture" style="max-height:4rem; max-width:4rem;" />
+                <hr />
+                <h5>@profile.Email - Name: @profile.FirstName @profile.LastName Org: @profile.OrgName</h5><br />
+                <label for="lst">Profile images</label>
+                <ul name="lst">
+                    @foreach (var i in profile.InfoPics)
+                    {
+                        <li>@i</li>
+                    }
+                </ul><hr />
+                <div class="container">
+                    <p><b>BIO:</b><br />@profile.TextBio</p>
+                </div>
+                break;
+            case ReportType.Conversation:
+                <button @onclick="@(()=>NavMan.NavigateTo($"/chat/{ReportObj.TargetId}"))">Go to chat</button>
+                <button>Send mail to @(Db.ConversationsCollection.First(x => x.Id == ReportObj.TargetId).Members[0].Username)</button>
+                <button>Send mail to @(Db.ConversationsCollection.First(x => x.Id == ReportObj.TargetId).Members[1].Username)</button>
+                <button></button>
+                break;
+        }
+    </div>
+}
+
+
+                @code {
+                    bool ConfirmDelete = false;
+                    string reason = string.Empty;
+
+                    [Parameter] public string Id { get; set; }
+                    SharedLib.Models.Report ReportObj = null;
+
+                    bool Loading = true;
+                    StaffUser Staff = new StaffUser();
+
+    protected override async Task OnInitializedAsync()
+            {
+                Staff = await StorageService.GetItemAsync<StaffUser>("user");
+                ReportObj = Db.ReportsCollection.First(x => x.Id == Id);
+                Loading = false;
+                await base.OnInitializedAsync();
+            }
+        }

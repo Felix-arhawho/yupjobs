@@ -1,0 +1,82 @@
+﻿@using SharedLib.Models;
+@page "/search/proposal/{Id}"
+
+@if (IsLoading)
+{
+    <Loader />
+}
+else
+{
+    <h1 class="top-header">Job search proposal</h1>
+    <div class="white-bg">
+        <h3>Send job search proposal</h3>
+        <form @onsubmit="Submit">
+            <div class="form-group">
+                <label for="Message">Your search proposal message</label>
+                <textarea @bind="Proposal.Message" 
+                          class="form-control"
+                          id="Message" 
+                          rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="ProposedSalary" >Proposed salary</label>
+                <input type="number" @bind="Proposal.ProposedSalary" 
+                       class="form-control" 
+                       id="ProposedSalary" 
+                       aria-describedby="RequestedSalary" 
+                       placeholder="Enter your proposed salary">
+            </div>
+            <label for="sbmt">@error</label>
+            <button name="sbmt" type="submit" class="btn btn-info">Send</button>
+        </form>
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; }
+
+    string error = string.Empty;
+
+    async Task Submit()
+    {
+        using var resp = await Ez.GetHttpPostResponse($"match/propose", new Dictionary<string, string>
+        {
+            {"token", Session.Token.ToJson() },
+            {"jproposal", Proposal.ToJson() }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+
+        }
+        else error = await resp.Content.ReadAsStringAsync();
+
+        //if (resp.IsSuccessStatusCode)
+        //    NavMan.NavigateTo("/")
+    }
+
+    bool IsLoading = false;
+
+    SearchProposal Proposal = new SearchProposal();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Proposal.Id = Id;
+        using var resp = await Ez.GetHttpPostResponse($"post/propose", new Dictionary<string, string>
+        {
+            {"id", Id },
+            {"jproposal", Proposal.ToJson() }
+        }) ;
+        var pres = await Ez.GetHttpPostResponse("info/canpost/" + Session.User.Id, null, false);
+        if (pres.IsSuccessStatusCode)
+        {
+            var resp2 = (await pres.Content.ReadAsStringAsync()).FromJson<Dictionary<string, bool>>();
+            if (!resp2["canpropose"])
+            {
+                ToastService.ShowToast("You have posted too many times, please upgrade your subscription", ToastLevel.Info);
+                NavMan.NavigateTo("/");
+            }
+        }
+        await base.OnInitializedAsync();
+    }
+}

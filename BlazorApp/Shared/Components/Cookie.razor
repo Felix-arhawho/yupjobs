@@ -1,0 +1,16 @@
+﻿<div class="cookie-bg">
+    <div class="cookie-info d-flex align-items-center justify-content-between">
+        <div>
+            This website saves data to your browser in order to track you,
+            by using this website you agree to Google and YupJobs using your information from this site
+        </div>
+        <button class="btn btn-info ml-3" @onclick="@(async()=>
+                                                      {
+                                                          StorageService.SetItem<bool>("accepted_cookies", true);
+                                                          NavMan.NavigateTo("/", true);
+                                                      })">OK</button>
+    </div>
+</div>
+@code {
+
+}

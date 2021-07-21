@@ -1,0 +1,52 @@
+﻿@page "/jobs/mine"
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+
+    <h1 class="top-header">My Jobs</h1>
+    @if (Session.Jobs.Count is 0)
+    {
+        <div class="white-bg">
+            <h3>You have no ongoing jobs, <a href="/jobs">find jobs</a> or <a href="/jobs/new">post a job offer</a></h3>
+        </div>
+    }
+    else
+    @foreach (var job in Session.Jobs)
+    {
+        <div class="white-bg" @onclick="@(()=>NavMan.NavigateTo($"/job/ongoing/{job.Id}"))">
+            <h4>@job.JobTitle</h4>
+            <hr />
+            <p>@job.OriginalPost</p>
+            <p>Status: @Enum.GetName(typeof(JobStatus), job.Status)</p>
+            <p>Payment: @job.Payment @job.Currency</p>
+        </div>
+    }
+}
+
+@code {
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+        }
+
+        using var resp = await Ez.GetHttpPostResponse("job/mine");
+        if (resp.IsSuccessStatusCode)
+        {
+            //var obj = JObject.Parse(await resp.Content.ReadAsStringAsync());
+            //Debug.WriteLine(obj.ToJson());
+            Session.Jobs = (await resp.Content.ReadAsStringAsync()).FromJson<List<Job>>();
+        }
+
+        Loading = false;
+        StateHasChanged();
+        await base.OnInitializedAsync();
+    }
+}

@@ -1,0 +1,158 @@
+﻿
+@page "/chat"
+@page "/chat/{ChatId}"
+
+@if (Loading)
+{
+    <Loader />
+}else if (Report)
+{
+    <BlazorApp.Pages.Support.Report TargetId="@SelectedId" Reset="()=>Report=false" Type="ReportType.Conversation"/>
+}
+else
+{
+
+    <div @onmouseover="SessionActive" class="chat-wrapper">
+        <div class="d-flex flex-row-reverse">
+            <button @onclick="e => this.show = !this.show" class="btn btn-info">Show conversations</button>
+            <button class="btn btn-info" @onclick="()=>Report=true">Report conversation</button>
+        </div>
+        <div class="conversations white-bg @(show? "show":"")">
+            @foreach (var conv in Session.Conversations)
+            {
+                <div class="conversation" style="background-color:whitesmoke;" @onclick="@(()=>
+                                                      {
+                                                          MessagesToSend.ReplaceAll(x => x.Item1 == SelectedId, new Tuple<string, string>(SelectedId, CurrentMsg));
+                                                          SelectedId = conv.Id;
+                                                          CurrentMsg = MessagesToSend.FirstOrDefault(x => x.Item1 == SelectedId)?.Item2;
+                                                          InvokeAsync(StateHasChanged);
+                                                      })">@conv.Title</div>
+                                                }
+        </div>
+        <div class="white-bg">
+            <div class="chat-name">
+                @Session.Conversations.FirstOrDefault(x => x.Id == SelectedId)?.Title
+            </div>
+            <div class="messages">
+                @foreach (var msg in Session.ChatMessages.FindAll(x => x.ConvId == SelectedId))
+                {
+                    <div class="message @(msg.UserId == Session.User.Id ? "right" : string.Empty)">
+                        <div class="top">
+                            <span class="date">@msg.DateSent.DayOfWeek @msg.DateSent.Day @msg.DateSent.ToString("MMMM") @msg.DateSent.Year</span>
+                            <span class="hour">@msg.DateSent.Hour:@msg.DateSent.Minute </span>
+                        </div>
+                        <div class="message-content">
+                            @((MarkupString)(msg.Hidden ? "<i>This message has been hidden</i>" : msg.Content))
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="message-box">
+                <form @onsubmit="OnSubmit">
+                    <textarea placeholder="Enter your message here ..." @bind="CurrentMsg"></textarea>
+                    <button class="btn btn-info btn-block" type="submit">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string ChatId { get; set; }
+
+    async Task SessionActive()
+    {
+        MsDelay = 5000;
+        await Task.Delay(30000);
+        MsDelay = 10000;
+    }
+
+    async Task OnSubmit()
+    {
+        var msg = new ChatMessage()
+        {
+            DateSent = DateTime.UtcNow,
+            Content = CurrentMsg,
+            ConvId = SelectedId,
+            Hidden = false,
+            UserId = Session.User.Id
+        };
+
+        Session.ChatMessages.Add(msg);
+        using var resp = await Ez.GetHttpPostResponse("chat/sendmessage", new Dictionary<string, string>
+            {
+                {"jmessage", msg.ToJson() }
+            });
+        CurrentMsg = string.Empty;
+        await Session.RefreshMessages();
+    }
+
+    bool Report = false;
+    static bool GetTaskStarted = false;
+    static bool Loading = true;
+
+
+    static Task GetMessagesTask = null;
+
+    static bool FirstRun = true;
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.LoggedIn){
+            NavMan.NavigateTo("/login");
+            return;
+        }
+
+        GetMessagesTask = Task.Run(async () =>
+        {
+            if (GetTaskStarted) return;
+            GetTaskStarted = true;
+
+            while (!Session.GotInfo)
+                await Task.Delay(1000);
+
+            while (true)
+            {
+                if (!Session.LoggedIn) return;
+
+                using var resp = await Ez.GetHttpPostResponse("chat/getmessages");
+                using var resp2 = await Ez.GetHttpPostResponse("chat/conversations");
+
+                if (resp.IsSuccessStatusCode && resp2.IsSuccessStatusCode)
+                {
+                    Session.ChatMessages = (await resp.Content.ReadAsStringAsync()).FromJson<List<ChatMessage>>();
+                    Session.Conversations = (await resp2.Content.ReadAsStringAsync()).FromJson<List<Conversation>>();
+                }
+
+                if (FirstRun)
+                {
+                    SelectedId = Session.Conversations.FirstOrDefault()?.Id;
+                    if (ChatId != null) SelectedId = ChatId;
+                }
+
+
+                Loading = false;
+                if (FirstRun) {
+                    FirstRun = false;
+                }else await Task.Delay(MsDelay);
+
+                await InvokeAsync(StateHasChanged);
+            }
+
+
+            //await InvokeAsync(StateHasChanged);
+        });
+
+        await base.OnInitializedAsync();
+    }
+
+    static short MsDelay = 30000;
+
+    private bool show = false;
+    static string SelectedId = string.Empty;
+    string CurrentMsg = string.Empty;
+
+    //List<Conversation> Conversations = new List<Conversation>();
+
+    static List<Tuple<string, short>> MessagesCount = new List<Tuple<string, short>>();
+    static List<Tuple<string, string>> MessagesToSend = new List<Tuple<string, string>>();
+}

@@ -1,0 +1,50 @@
+﻿
+@if (Loading)
+{
+    <Loader />
+}
+else if (Reviews.Count > 0)
+{
+    foreach (var rev in Reviews)
+    {
+        <div class="review white-bg">
+            <span class="heading" @onclick="@(()=>NavMan.NavigateTo("/profile/"+rev.TargetProfileId))">@rev.Username</span>
+            <span class="oi oi-star @((int)rev.Rating > 0 ? "checked" : "")"></span>
+            <span class="oi oi-star @((int)rev.Rating > 1 ? "checked" : "")"></span>
+            <span class="oi oi-star @((int)rev.Rating > 2 ? "checked" : "")"></span>
+            <span class="oi oi-star @((int)rev.Rating > 3 ? "checked" : "")"></span>
+            <span class="oi oi-star @((int)rev.Rating > 4 ? "checked" : "")"></span>
+            <hr style="border:1px solid #f1f1f1">
+            <p>
+                @rev.ReviewContent    
+            </p>
+            <div class="date">
+                @rev.DatePosted
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="container">
+        <h3>There are no reviews for this profile</h3>
+    </div>
+}
+
+@code {
+    public static List<ProfileReview> Reviews = new List<ProfileReview>();
+    [Parameter] public string Profile { get; set; }
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse($"reviews/getprofile/{Profile}");
+        if (resp.IsSuccessStatusCode)
+        {
+            Reviews = (await resp.Content.ReadAsStringAsync()).FromJson<List<ProfileReview>>();
+        }
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

@@ -1,0 +1,26 @@
+﻿@page "/tos"
+
+<h3>Terms of service</h3>
+<hr />
+@if (Loading)
+            {
+                <Loader></Loader>
+            }
+            else
+            {
+    <p>@ToSs</p>
+            }
+
+@code {      
+    bool Loading = true;
+    string ToSs = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse("info/tos", null, false);
+        ToSs = await resp.Content.ReadAsStringAsync();
+        
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

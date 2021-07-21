@@ -1,0 +1,87 @@
+﻿@page "/interval/edit/{OrderId}"
+
+@if (Loading)
+{
+    <Loader></Loader>
+}
+else if (NotFound)
+            {
+                <NotFound></NotFound>
+            }
+else
+{
+    <h3>Interval Payment Edit</h3>
+    <div class="white-bg" style="max-width: 450px;">
+        <form @onsubmit="Edit">
+            <div class="form-group">
+                <label for="Title">Order title</label>
+                <input name="Title" class="form-control" placeholder="Order title" @bind="Order.Title" />
+            </div>
+            <div class="form-group">
+                <label for="Amount">Amount per interval</label>
+                <div class="d-flex">
+                    <input name="Amount" @bind="Order.Payment" class="form-control" placeholder="Amount per interval" type="number" />
+                    <select class="form-control ml-2" style="max-width: 120px;" @bind="Order.Currency">
+                        @foreach (var i in Enum.GetValues(typeof(Currency)))
+                        {
+                            <option value="@i">@i</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="Days">Interval (in days) (@(FeesCtl.WalletRechargeFee(Order.Payment, Order.Currency)[1] + " " + Order.Currency.GetName()) per payment)</label>
+                <input name="Days" class="form-control" placeholder="Interval (in days)" @bind="DaysInterval" />
+            </div>
+            <label>With current settings, next payment of @Order.Payment @Order.Currency.GetName() will occur on @((Order.LastPayment + TimeSpan.FromDays(DaysInterval)).Print())</label>
+            <hr/>
+            <button class="btn btn-success" type="submit">Submit</button>
+        </form>
+    </div>
+ }
+
+
+
+
+@code {
+    bool Loading = true;
+    [Parameter] public string OrderId { get; set; }
+    public IntervalPaymentOrder Order { get; set; } = new IntervalPaymentOrder();
+    short DaysInterval = 7;
+    bool NotFound = false;
+
+    async Task Edit()
+    {
+        Loading = true;
+        await InvokeAsync(StateHasChanged);
+
+        Order.PaymentInterval = TimeSpan.FromDays(DaysInterval);
+        var resp = await Ez.GetHttpPostResponse("interval/edit", new Dictionary<string, string>
+    {
+        {"interval", Order.PaymentInterval.ToString() },
+        {"amount", Order.Payment.ToString() },
+        {"title", Order.Title },
+        {"currency", Order.Currency.GetName() }
+    });
+        if (resp.IsSuccessStatusCode)
+            Order = (await resp.Content.ReadAsStringAsync()).FromJson<IntervalPaymentOrder>();
+        else NotFound = true;
+
+        Loading = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse("interval/get", new Dictionary<string, string> { { "id", OrderId } });
+        if (resp.IsSuccessStatusCode)
+        {
+            Order = (await resp.Content.ReadAsStringAsync()).FromJson<IntervalPaymentOrder>();
+            DaysInterval = (short)Math.Round(Order.PaymentInterval.TotalDays, 0);
+        }
+        else NotFound = true;
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+}

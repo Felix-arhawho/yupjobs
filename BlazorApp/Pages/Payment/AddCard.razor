@@ -1,0 +1,108 @@
+﻿<div class=" pt-4 pl-2 pr-2 pb-2">
+    <h5>Payment Method Credit Card</h5>
+</div>
+<div class="tab-content">
+    <div id="credit-card" class="tab-pane fade show active pt-3">
+        <form role="form" @onsubmit="AddMethod">
+            <div class="form-group">
+                <label for="username">
+                    <h6>Card Owner</h6>
+                </label> <input type="text" name="username" placeholder="Card Owner Name" required class="form-control" @bind="name">
+            </div>
+            <div class="form-group">
+                <label for="cardNumber">
+                    <h6>Card number</h6>
+                </label>
+                <div class="input-group">
+                    <input type="text" name="cardNumber" placeholder="Valid card number" class="form-control" @bind="number" required>
+                    <div class="input-group-append"> <span class="input-group-text text-muted"> <i class="oi oi-credit-card mx-1"></i></span> </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-8">
+                    <div class="form-group">
+                        <label>
+                            <span class="hidden-xs">
+                                <h6>Expiration Date</h6>
+                            </span>
+                        </label>
+                        <div class="input-group"> <input type="number" placeholder="MM" name="" class="form-control" @bind="expMonth" required> <input type="number" placeholder="YY" name="" class="form-control" @bind="expYear" required> </div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="form-group mb-4">
+                        <label data-toggle="tooltip" title="Three digit CV code on the back of your card">
+                            <h6>CVV <i class="fa fa-question-circle d-inline"></i></h6>
+                        </label> <input type="number" required class="form-control" @bind="cvc">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group">
+                    <center>
+                        <label>
+                            <span class="hidden-xs">
+                                <h6>Address (Optional)</h6>
+                            </span>
+                        </label>
+                    </center>
+                </div>
+            </div> 
+            <div class="form-group">
+                <label for="line1">Address Line 1</label>
+                <input type="text" class="form-control" name="line1" placeholder="Address" @bind="address" />
+            </div>
+            <div class="form-group">
+                <label for="zip">Postal Code</label>
+                <input type="number" class="form-control" name="zip" placeholder="Postal code" @bind="zipcode" />
+            </div>
+            <div class="form-group">
+                <label for="city">City</label>
+                <input type="text" class="form-control" name="city" placeholder="City" @bind="city" />
+            </div>
+            <div class="form-group">
+                <label for="state">State</label>
+                <input type="text" class="form-control" name="state" placeholder="State" @bind="state" />
+            </div>
+            <div class="form-group">
+                <label for="country">Country</label>
+                <input type="text" class="form-control" name="country" placeholder="Country" @bind="country" />
+            </div>
+            <button type="submit" class="btn btn-info">Add payment method: Credit Card</button>
+        </form>
+    </div>
+</div>
+@code {
+
+    string number = null;
+    short expMonth = 0;
+    short expYear = 0;
+    string cvc = null;
+    string name = null;
+    string address = null;
+    string city = null;
+    string zipcode = null;
+    string state = null;
+    string country = null;
+
+    async Task AddMethod()
+    {
+        using var resp = await Ez.GetHttpPostResponse("money/addcard", new Dictionary<string, string>()
+        {
+            {"number", number },
+            {"expMonth", expMonth.ToString() },
+            {"expYear", expYear.ToString() },
+            {"cvc", cvc },
+            {"name", name },
+            {"address", address },
+            {"city", city },
+            {"zipcode", zipcode },
+            {"state", state },
+            {"country", country }
+        });
+
+        ResetAction();
+    }
+
+    [Parameter] public Action ResetAction { get; set; }
+}

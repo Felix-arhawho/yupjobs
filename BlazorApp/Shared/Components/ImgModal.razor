@@ -1,0 +1,7 @@
+﻿@page "/data/img/{Src}"
+
+<img src="@Src" style="max-width:30rem;max-height:30rem;"/>
+
+@code {
+    [Parameter] public string Src { get; set; }
+}

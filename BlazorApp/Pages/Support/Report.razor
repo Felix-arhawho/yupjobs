@@ -1,0 +1,48 @@
+﻿@page "/report"
+
+@if (!Session.LoggedIn) NavMan.NavigateTo("/login");
+
+<h3>Report</h3>
+<div class="card-wrapper">
+    <div class="card">
+        <div class="card-header">
+            <h4>Are you sure you want to report this?</h4>
+        </div>
+        <div class="card-body">
+            <textarea class="form-control" @bind="reason" placeholder="Tell us more"></textarea>
+            <hr />
+            <center>
+                <div class="btn-group">
+                    <button class="btn btn-success" @onclick="@(async ()=>
+                                                                  {
+                                                                      var ns = await Ez.GetHttpPostResponse("support/report", new Dictionary<string, string>
+                                                                      {
+                                                                          {"jreport", new SharedLib.Models.Report
+                                                                          {
+                                                                              Date = DateTime.UtcNow,
+                                                                              Reason = reason,
+                                                                              TargetId = TargetId,
+                                                                              Type = Type,
+                                                                              UserId = Session.User?.Id,
+                                                                          }.ToJson() }
+                                                                      });
+                                                                      NavMan.NavigateTo("/");
+                                                                      ToastService.ShowToast("Post was reported", ToastLevel.Info);
+                                                                  })">
+                        Confirm
+                    </button>
+                    <button class="btn btn-danger ml-3" @onclick="Reset">No</button>
+                </div>
+            </center>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    string reason = string.Empty;
+    [Parameter] public string TargetId { get; set; }
+    [Parameter] public ReportType Type { get; set; }
+    [Parameter]
+    public Action Reset { get; set; }
+}

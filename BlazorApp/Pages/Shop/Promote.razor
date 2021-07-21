@@ -1,0 +1,100 @@
+﻿@page "/promote/{Id}/{Type}"
+@if (Loading)
+{
+    <Loader />
+}
+else if (AddMethod)
+{
+    <BlazorApp.Pages.Payment.AddPaymentMethod ResetAction="@(()=>
+                                                             {
+                                                                 AddMethod = false;
+                                                                 StateHasChanged();
+                                                             })"/>
+}
+else
+{
+<div class="container-fluid">
+    <h3>Promote</h3>
+    <div class="card-wrapper">
+        <div class="card-body">
+            @if (Type is PrType.Job)
+            {
+                <div class="container">
+                    <h4>Boost post <a href="@($"/post/hire/{Post.Id}")">@Post.Title</a></h4><hr />
+                    <h5>Total: @Price @Session.User.DefaultCurrency</h5>
+                </div>
+            }
+            else if (Type is PrType.Apply)
+            {
+                <div class="container">
+                    <h4>Boost application of <a href="@($"/profile/{Apply.ProfileId}")">@Apply.Username</a></h4><hr />
+                    <h5>Total: @Price @Session.User.DefaultCurrency</h5>
+                </div>
+            }
+            <hr />
+            <label for="payment-method-list">Select payment method</label>
+            <div id="payment-method-list">
+                @{ 
+                    var nmethod = new UserPaymentMethod { Type = MethodType.YupWallet, MethodId = "WALLET", Id = "WALLET" };
+                    if (Session.UserPaymentMethods.Count(x => x.MethodId == "WALLET") < 1)
+                        Session.UserPaymentMethods.Add(nmethod);
+                }
+                @foreach (var method in Session.UserPaymentMethods)
+                {
+                    <div @onclick="()=> SelectedMethod = method.Id">
+                        <BlazorApp.Pages.Payment.PaymentMethod Method="method" Selected="SelectedMethod == method.Id" />
+                    </div>
+                }
+                <br />
+                <button class="btn btn-info" @onclick="()=>AddMethod=true">Add new payment method</button>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+
+
+@code {
+    bool Loading = true;
+    [Parameter] public string Id { get; set; }
+    [Parameter] public PrType Type { get; set; }
+    JobPost Post = new JobPost();
+    JobApply Apply = new JobApply();
+    bool AddMethod = false;
+    string SelectedMethod = Session.UserPaymentMethods.FirstOrDefault().Id;
+    decimal Price = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+            cnt++;
+            if (cnt > 6)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+        }
+
+        //using var resp = Type is PrType.Job ? await Ez.GetHttpPostResponse("post/get") : await Ez.GetHttpPostResponse("");
+        using var prices = await Ez.GetHttpPostResponse("shop/getprices/"+Session.User.DefaultCurrency);
+        if (prices.IsSuccessStatusCode)
+        {
+            Price = (await prices.Content.ReadAsStringAsync()).FromJson<Dictionary<YupShopItemType, decimal>>()
+                [Type == PrType.Apply ? YupShopItemType.ApplyPromo : YupShopItemType.JobPromo];
+        }
+
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    public enum PrType
+    {
+        Job = 10,
+        Apply = 12,
+    }
+}

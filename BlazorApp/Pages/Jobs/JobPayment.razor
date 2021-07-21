@@ -1,0 +1,281 @@
+﻿@page "/job/pay/{JobId}"
+@using SharedLib.Models
+
+@if (Loading)
+{
+    <Loader />
+}
+else if (NewMethod)
+{
+    <BlazorApp.Pages.Payment.AddPaymentMethod ResetAction="async () => { NewMethod = false; await Session.RefreshPaymentMethods(); await InvokeAsync(StateHasChanged); }" />
+}
+else
+{
+<form @onsubmit="Submit">
+    <h1 class="top-header">Pay for a job</h1>
+    <div class="white-bg">
+        <h4>Pay @Job.EmployeeId for job <a href="@($"post/hire/{Job.OriginalPost?.Id}")">@Job.JobTitle</a></h4>
+        <div>
+            <button class="btn btn-info btn-block" @onclick="()=>Direct=true" disabled="@Direct">Direct Payment</button>
+            <button class="btn btn-info btn-block" @onclick="()=>Direct=false" disabled="@(!Direct)">Escrow Payment</button>
+            <a class="btn btn-info btn-block" href="/interval/new/@Job.Id">Reccuring payments</a>
+        </div>
+        @if (Direct)
+        {
+            <div class="form-group">
+                <label for="payment-name">Payment Amount</label>
+                <input type="number" class="form-control" id="payment-name" @bind="DirectAmount" required>
+            </div>
+        }
+        else
+        {
+            <hr />
+            <h4>My payments</h4>
+            <ul class="payment-list">
+                @foreach (var payment in Payments)
+                {
+                    <li>@payment.Key - @payment.Value @PayCurrency - <span @onclick="()=>Payments.Remove(payment.Key)">✕</span></li>
+                }
+            </ul>
+            <h4>Add payment</h4>
+            <div class="d-flex flex-wrap ">
+                <div class="form-group">
+                    <label for="payment-name">Payment name</label>
+                    <input type="text" class="form-control" id="payment-name" @bind="CurrentPayment.Item1">
+                </div>
+                <div class="form-group ml-sm-5">
+                    <label for="add-payment">Payment Amount</label>
+                    <input type="number" class="form-control" id="add-payment" @bind="CurrentPayment.Item2">
+                </div>
+            </div>
+            <button @onclick="@(()=>
+                                    {
+                                        if (!Payments.TryAdd(CurrentPayment.Item1, CurrentPayment.Item2)){
+                                            ToastService.ShowToast("Each payment must have a unique name", ToastLevel.Warning);
+                                        }else{
+                                            CurrentPayment = new ValueTuple<string, decimal>();
+                                        }
+                                    })" type="button" class="btn btn-info">
+                Add payment
+            </button>
+            <hr />
+        }
+
+        @{
+            var fees = FeesCtl.WalletRechargeFee(Direct ? DirectAmount : Payments.Values.Sum(), PayCurrency);
+            var gdwlt = Session.UserWallets.FirstOrDefault(x => x.Currency == PayCurrency) != null;
+            var wlt = Session.UserWallets.FirstOrDefault(x => x.Currency == PayCurrency);
+            if (wlt.Currency != OldWlt)
+            {
+                Wallet = wlt;
+                OldWlt = PayCurrency;
+                RefreshWallet();
+            }
+        }
+        @if (SelectedMethod.Id is "WALLET" && gdwlt)
+        {
+            <p class="total">
+                Available funds in wallet: <span>
+                    <button type="button" @onclick="() => { DirectAmount = Wallet.AvailableFunds; CurrentPayment.Item2 = Wallet.AvailableFunds; }">@Wallet.AvailableFunds @PayCurrency</button>
+                </span>
+            </p>
+            <hr />
+        }
+        else if (SelectedMethod.Id is "WALLET" && !gdwlt)
+        {
+            <p class="total">You do not have a wallet for this currency, <a href="/wallets">recharge you wallet</a></p>
+        }
+        <p class="total">Total payments: <span>@(Direct ? DirectAmount : Payments.Values.Sum()) @PayCurrency</span></p>
+        <hr />
+        <p class="total">Fees: <span>@(SelectedMethod.Id is "WALLET" ? 0 : Math.Round(fees[0], 2)) @PayCurrency</span></p>
+        <hr />
+        <p class="total">Total to pay: <span>@(SelectedMethod.Id is "WALLET" ? Math.Round(fees[2], 2) : Math.Round(fees[1], 2)) @PayCurrency</span></p>
+        <div class="form-group">
+            <label for="Currency">Currency</label>
+            <select class="custom-select" style="max-width: 100px;" name="Currency" @bind="PayCurrency">
+                @foreach (var curency in Enum.GetValues(typeof(Currency)))
+                {
+                    <option value="@curency">@curency</option>
+                }
+            </select>
+        </div>
+        <hr />
+        <div class="form-group">
+            <label>Select payment method</label>
+            <div id="payment-method-list">
+                @{
+                    var sepa = false;
+                    if ((Direct && DirectAmount > 500) || (!Direct && Payments.Values.Sum() > 500))
+                        sepa = true;
+                    var nmethod = new UserPaymentMethod { Type = MethodType.YupWallet, MethodId = "WALLET", Id = "WALLET" };
+                    if (Session.UserPaymentMethods.Count(x => x.MethodId == "WALLET") < 1)
+                        Session.UserPaymentMethods.Add(nmethod);
+                }
+                @foreach (var method in Session.UserPaymentMethods)
+                {
+                    if (!sepa && method.Type is MethodType.SepaDirect) continue;
+                    <div @onclick="()=> SelectedMethod = method">
+                        <BlazorApp.Pages.Payment.PaymentMethod Method="method" Selected="SelectedMethod.Id == method.Id" />
+                    </div>
+                }
+            </div>
+            <button class="btn btn-info" id="add-another-payment" @onclick="()=>NewMethod=true">Add another method</button>
+        </div>
+        <hr />
+        <label for="paybtn">@error</label>
+        <button id="paybtn" disabled="@Submitting" class="btn btn-lg btn-success btn-block" type="submit">Pay</button>
+        <hr />
+        <button id="paybtn" disabled="@Submitting" class="btn btn-lg btn-danger btn-block" @onclick="ResetAction">Cancel</button>
+    </div>
+</form>
+}
+
+
+@code {
+
+    bool Submitting = false;
+
+    public static Currency PayCurrency { get; set; } = Session.User.DefaultCurrency;
+
+
+
+    string error = string.Empty;
+    public static ValueTuple<string, decimal> CurrentPayment = new ValueTuple<string, decimal>();
+    public static Dictionary<string, decimal> Payments = new Dictionary<string, decimal>();
+
+    [Parameter] public string JobId { get; set; }
+    [Parameter] public Action ResetAction { get; set; } = null;
+
+    bool Loading = true;
+    bool NewMethod = false;
+
+    bool Direct = true;
+    decimal DirectAmount = FeesCtl.GetConvertedRate(50, Session.User.DefaultCurrency);
+
+    //JobPost Post = new JobPost();
+    Job Job = new Job();
+
+    UserWallet Wallet = null;
+    Currency OldWlt = Session.User.DefaultCurrency;
+    async Task RefreshWallet()
+    {
+        using var resp = await Ez.GetHttpPostResponse("wallet/get", new Dictionary<string, string> { { "id", Wallet.Id } });
+        if (resp.IsSuccessStatusCode) Wallet = (await resp.Content.ReadAsStringAsync()).FromJson<UserWallet>();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ResetAction is null) ResetAction = delegate
+        {
+            NavMan.NavigateTo($"/job/ongoing/{JobId}");
+        };
+
+        Wallet = Session.UserWallets.FirstOrDefault(x => x.Currency == PayCurrency);
+        var t = RefreshWallet();
+
+        using var resp = await Ez.GetHttpPostResponse($"job/mine", new Dictionary<string, string>
+    {
+            {"id", JobId }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            Job = (await resp.Content.ReadAsStringAsync()).FromJson<Job>();
+            PayCurrency = Job.Currency;
+        }
+        else NavMan.NavigateTo("/notfound");
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    async Task Submit()
+    {
+        Submitting = true;
+        StateHasChanged();
+
+        HttpResponseMessage resp;
+        if (Direct)
+        {
+            if (DirectAmount < FeesCtl.GetConvertedRate(10, PayCurrency))
+            {
+                ToastService.ShowToast($"Payment must be of at least {FeesCtl.GetConvertedRate(10, PayCurrency)} {PayCurrency.GetName()}", ToastLevel.Warning);
+                Submitting = false;
+                return;
+            }
+            resp = await Ez.GetHttpPostResponse("job/directpay", new Dictionary<string, string>
+        {
+                {"jobId", JobId },
+                {"methodId", SelectedMethod.Id },
+                {"amount", DirectAmount.ToString() },
+                {"currency", PayCurrency.ToString() }
+            });
+        }
+        else
+        {
+            if (Payments.Values.Sum() < FeesCtl.GetConvertedRate(10, PayCurrency))
+            {
+                ToastService.ShowToast($"Payment must be of at least {FeesCtl.GetConvertedRate(10, PayCurrency)} {PayCurrency.GetName()}", ToastLevel.Warning);
+                Submitting = false;
+                return;
+            }
+            resp = await Ez.GetHttpPostResponse("job/addpayment", new Dictionary<string, string>
+        {
+                {"jobId", JobId },
+                {"methodId", SelectedMethod.Id },
+                {"jpayments", Payments.ToJson() },
+                {"currency", Enum.GetName(typeof(Currency), PayCurrency) },
+            });
+        }
+
+        if (resp.IsSuccessStatusCode)
+        {
+            var obj = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+            var bill = obj["bill"].ToObject<UserBill>();
+            if (obj.Value<bool>("redirect"))
+            {
+                Debug.WriteLine("Redirect");
+                var url = obj.Value<string>("url");
+                NavMan.NavigateTo(url);
+                ResetAction();
+            }
+            else if (obj.Value<bool>("newtab"))
+            {
+                Debug.WriteLine("NewTab");
+                var url = obj.Value<string>("url");
+                ToastService.ShowToast("Open the popup, then pay the invoice and the funds will appear shorty", ToastLevel.Info);
+                await JsRuntime.InvokeVoidAsync("open", url, "_blank");
+                ResetAction();
+            }
+            else if (obj.Value<bool>("paid"))
+            {
+                Debug.WriteLine("Paid");
+                NavMan.NavigateTo($"/success/pay/{bill.Id}");
+            }
+            else if (obj.Value<bool>("processing"))
+            {
+                NavMan.NavigateTo($"/success/pay/{bill.Id}");
+            }
+            else
+            {
+                Debug.WriteLine("NewTab");
+                ToastService.ShowToast("There was a error processing your payment", ToastLevel.Error);
+                error = obj["error"].Value<string>();
+            }
+
+            Payments.Clear();
+            DirectAmount = FeesCtl.GetConvertedRate(50, PayCurrency);
+            //Submitting = false;
+        }
+
+        resp.Dispose();
+        Loading = false;
+        Submitting = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    UserPaymentMethod SelectedMethod = new UserPaymentMethod();
+}

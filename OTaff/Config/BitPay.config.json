@@ -1,0 +1,21 @@
+{
+  "BitPayConfiguration": {
+    "Environment": "Test",
+    "EnvConfig": {
+      "Test": {
+        "PrivateKeyPath": "Config/bitpay_private_test.key",
+        "ApiTokens": {
+          "merchant": "7iHstvdujwXRHCJcKfygwuN9bUx3SoRStwcmKB5uuDiW",
+          "payroll": ""
+        }
+      },
+      "Prod": {
+        "PrivateKeyPath": "",
+        "ApiTokens": {
+          "merchant": "",
+          "payroll": ""
+        }
+      }
+    }
+  }
+}

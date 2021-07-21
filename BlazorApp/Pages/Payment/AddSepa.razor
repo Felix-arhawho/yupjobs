@@ -1,0 +1,112 @@
+﻿<div class=" pt-4 pl-2 pr-2 pb-2">
+    <h5>Payment Method Credit Card</h5>
+</div>
+<div class="tab-content">
+    <div id="credit-card" class="tab-pane fade show active pt-3">
+        <form role="form" @onsubmit="AddMethod">
+            <div class="form-group">
+                <label for="username">
+                    <h6>Account Owner Name</h6>
+                </label> <input type="text" name="username" placeholder="Account Owner Name" required class="form-control" @bind="name">
+            </div>
+            <div class="form-group">
+                <label for="cardNumber">
+                    <h6>IBAN</h6>
+                </label>
+                <div class="input-group">
+                    <input type="text" name="cardNumber" placeholder="IBAN" @onfocusout="ValidateIban" @bind="iban" class="form-control" required>
+                    <div class="input-group-append"> <span class="input-group-text text-muted"> <i class="oi oi-credit-card mx-1"></i></span> </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <input type="checkbox" @bind="accepted" />
+                <label> I accept the <a @onclick="()=>ShowMandate=true" style="color: red"><u>SEPA Mandate</u></a>, certify that I am owner of this bank account and accept that this bank account may get charged arbitrarily on our demand</label>
+                @if (ShowMandate)
+                {
+                    <br />
+                    <p>
+                        By providing your IBAN and confirming this payment, you are authorizing YupJobs and Stripe, our payment service provider, to send instructions to your bank to debit your account and your bank to debit your account in accordance with those instructions. You are entitled to a refund from your bank under the terms and conditions of your agreement with your bank. A refund must be claimed within 8 weeks starting from the date on which your account was debited.
+                    </p>
+                }
+
+            </div>
+            <div class="container">
+                <h6 style="color: red">@error</h6>
+            </div>
+
+            <button type="submit" class="btn btn-info" disabled="@Submit">Add payment method: SEPA Debit</button>
+
+            @*@if (Submit)
+        {
+        }
+        else
+        {
+            <button type="submit" class="btn btn-info">Add payment method: SEPA Debit</button>
+        }*@
+
+        </form>
+    </div>
+</div>
+
+@code {
+    string error = string.Empty;
+
+    bool ShowMandate = false;
+
+    string iban = string.Empty;
+    string name = string.Empty;
+    bool accepted = false;
+
+    bool Submit = false;
+
+    async Task<bool> ValidateIban()
+    {
+        //if (!Validators.ValidateBankAccount(iban))
+        //{
+        //    error = "The IBAN provided is not valid";
+        //    return false;
+        //}else if (string.IsNullOrWhiteSpace(name))
+        //{
+        //    error = "You need to enter your name";
+        //    return false;
+        //}else if (!accepted)
+        //{
+        //    error = "You need to accept the mandate";
+        //    return false;
+        //}
+        //else
+        //{
+        //    error = string.Empty;
+        //}
+
+        return true;
+    }
+
+    async Task AddMethod()
+    {
+        Submit = true;
+        await InvokeAsync(StateHasChanged);
+
+        if (!await ValidateIban()) return;
+
+        using var resp = await Ez.GetHttpPostResponse("money/addsepa", new Dictionary<string, string> {
+            {"iban", iban },
+            {"name", name },
+            {"signed", accepted.ToString() }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            ResetAction();
+        }
+        else
+        {
+            error = await resp.Content.ReadAsStringAsync();
+            Submit = false;
+            //await InvokeAsync(StateHasChanged);
+        }
+
+    }
+
+    [Parameter] public Action ResetAction { get; set; }
+}

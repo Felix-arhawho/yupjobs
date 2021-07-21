@@ -1,0 +1,24 @@
+﻿@page "/post/{postId}"
+@model StaticPages.Pages.PostPageModel
+
+@{ 
+    var post = Db.JobPostsCollection.Find(x => x.Id == Model.Id).FirstOrDefault();
+}
+
+<div class="container-fluid">
+    <h4>@post.Title - Posted on @post.PostDate.Print()</h4><br />
+    <p>@post.Description</p>
+    <br />
+    <span>
+        @foreach (var t in post.Tags)
+        {
+            @($"{t}, ")
+        }
+    </span>
+    <br />
+    <a class="btn btn-primary btn-block" href="https://www.yupjobs.net/post/hire/@(post.Id)">Apply to this job</a>
+</div>
+
+@{
+
+}

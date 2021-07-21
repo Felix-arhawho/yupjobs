@@ -1,0 +1,68 @@
+﻿@using SharedLib.Models
+@page "/dispute/{id}"
+
+@if (Loading)
+{
+    <Loader/>
+}
+else
+{
+    <h3>Dispute for job: <a href="@($"/job/ongoing/{Dispute.JobId}")">@Dispute.JobId</a></h3>
+    <div class="white-bg dispute">
+        <div class="date">Date: @Dispute.DateStarted.ToShortDateString()</div>
+        <hr />
+        <div class="d-flex">
+            <div>
+                <h4>Users involved</h4>
+                <ul class="userlist">
+                    @foreach (var s in Dispute.UserIds)
+                    {
+                        <li>@s.Item2</li>
+                    }
+                </ul>
+            </div>
+            <div class="container">
+                <button class="btn btn-primary btn-block" @onclick="@(()=>NavMan.NavigateTo($"/chat/{Dispute.ConversationId}"))">Go to conversation</button>
+            </div>
+            <div class="ml-3">
+                <h4>Staff involved</h4>
+                <ul class="stafflist">
+                    @Dispute.StaffIds.Count()
+                </ul>
+            </div>
+        </div>
+        @*<div>
+            <h3>Assigned stuff:</h3>
+            <p>Staff 1</p>
+        </div>*@
+    </div>
+}
+
+
+@code {
+    [Parameter] public string Id { get; set; }
+    public Dispute Dispute { get; set; } = new Dispute();
+
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var logged = await Session.WaitForLogin();
+        if (!logged) NavMan.NavigateTo("/login");
+        else
+        {
+            using var resp = await Ez.GetHttpPostResponse("disputes/get", new Dictionary<string, string>
+        {
+                {"id", Id }
+            });
+            if (resp.IsSuccessStatusCode)
+            {
+                Dispute = (await resp.Content.ReadAsStringAsync()).FromJson<Dispute>();
+            }
+        }
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}
+

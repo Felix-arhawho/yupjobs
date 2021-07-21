@@ -1,0 +1,27 @@
+﻿@using System.Net.Http
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using OtaffSupport
+@using OtaffSupport.Shared
+
+@using OtaffSupport.Data
+@using OtaffSupport
+@using MongoDB.Driver
+@using SharedLib.Models
+@using Blazored.SessionStorage
+@using OTaff.Lib.Money
+@*@using OTaff.Lib*@
+@using OTaff.Lib.Models
+@using OTaff.Lib.Extensions  
+@using ServerLib
+@using ServerLib.Models
+@using Newtonsoft.Json
+
+@inject Blazored.SessionStorage.ISessionStorageService StorageService
+@*@inject Blazored.Toast.Services.IToastService ToastService*@
+@inject NavigationManager NavMan

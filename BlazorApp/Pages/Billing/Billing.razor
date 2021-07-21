@@ -1,0 +1,199 @@
+﻿@page "/billing"
+
+<h1 class="top-header">Billing</h1>
+<div class="nav nav-tabs">
+    <div class="nav-item">
+        <a class="nav-link @FirstLink" @onclick="ToggleFirstLink">Current Bills</a>
+    </div>
+    <div class="nav-item">
+        <a class="nav-link @SecondLink" @onclick="ToggleSecondLink" >Unpaid Bills</a>
+    </div>
+    @*<div class="nav-item">
+        <a class="nav-link @ThirdLink" @onclick="ToggleThirdLink">Archive</a>
+    </div>*@
+</div>
+<div class="tab-content">
+    <div id="home" class="tab-pane fade @FirstLink @FirstLinkPane  ">
+        <div class="table-responsive">
+            <table class="table white-bg">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width: 50px;">#</th>
+                        <th scope="col" style="width: 150px;">Date</th>
+                        <th scope="col">Method Type</th>
+                        <th scope="col">Paid</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Options</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var bill in Bills.FindAll(x => x.Paid).OrderByDescending(x=>x.DateIssued))
+                    {
+                        <tr>
+                            <th scope="row">1</th>
+                            <td>@bill.DateIssued.ToLongDateString()</td>
+                            <td>@bill.MethodType</td>
+                            <td>@bill.TotalAmountRequested @bill.Currency</td>
+                            <td>@bill.Status</td>
+                            <td><a href="@($"/bill/{bill.Id}/details")" class="btn btn-info">Details</a></td>
+                        </tr>
+                        @*<tr>
+                            <th scope="row">1</th>
+                            <td>21.03.2017</td>
+                            <td>Credit Card</td>
+                            <td>199 EUR</td>
+                            <td>Fail</td>
+                            <td><button class="btn btn-info">Details</button></td>
+                        </tr>*@
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="menu1" class="tab-pane fade @SecondLink @SecondLinkPane">
+        <div class="table-responsive">
+            <table class="table white-bg">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width: 50px;">#</th>
+                        <th scope="col" style="width: 150px;">Date</th>
+                        <th scope="col">Method Type</th>
+                        <th scope="col">Paid</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Options</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var bill in Bills.FindAll(x => !x.Paid).OrderByDescending(x => x.DateIssued))
+                    {
+                        <tr>
+                            <th scope="row">1</th>
+                            <td>@bill.DateIssued.ToLongDateString()</td>
+                            <td>@bill.MethodType</td>
+                            <td>@bill.TotalAmountRequested @bill.Currency</td>
+                            <td>@bill.Status</td>
+                            <td>
+                                <div>
+                                    <a href="@($"/bill/{bill.Id}/pay")" class="btn btn-info">Pay</a>
+                                    <a href="@($"/bill/{bill.Id}/details")" class="btn btn-info">Details</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @*<tr>
+            <th scope="row">1</th>
+            <td>21.03.2017</td>
+            <td>Credit Card</td>
+            <td>199 EUR</td>
+            <td>Fail</td>
+            <td><button class="btn btn-info">Pay</button></td>
+        </tr>*@
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @*<div id="menu2" class="tab-pane fade  @ThirdLink @ThirdLinkPane">
+        <div class="table-responsive">
+            <table class="table white-bg">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width: 50px;">#</th>
+                        <th scope="col" style="width: 150px;">Date</th>
+                        <th scope="col">Method Type</th>
+                        <th scope="col">Paid</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Options</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">1</th>
+                        <td>21.03.2017</td>
+                        <td>Credit Card</td>
+                        <td>1299 EUR</td>
+                        <td>Success</td>
+                        <td><button class="btn btn-info">Details</button></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">1</th>
+                        <td>21.03.2017</td>
+                        <td>Credit Card</td>
+                        <td>199 EUR</td>
+                        <td>Fail</td>
+                        <td><button class="btn btn-info">Details</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>*@
+</div>
+
+@code {
+    private string FirstLink = "active";
+    private string FirstLinkPane = "show";
+
+    private string SecondLink = "";
+    private string SecondLinkPane = "";
+
+    private string ThirdLink = "";
+    private string ThirdLinkPane = "";
+
+    List<UserBill> Bills = new List<UserBill>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+        await base.OnInitializedAsync();
+    }
+
+    async Task Refresh()
+    {
+        using var resp = await Ez.GetHttpPostResponse("billing/get");
+        if (resp.IsSuccessStatusCode)
+        {
+            Bills = (await resp.Content.ReadAsStringAsync()).FromJson<List<UserBill>>();
+            StateHasChanged();
+        }
+        else
+        {
+
+        }
+    }
+
+    private void ToggleFirstLink()
+    {
+        FirstLink = "active";
+        FirstLinkPane = "show";
+
+        SecondLink = "";
+        SecondLinkPane = "";
+
+        ThirdLink = "";
+        ThirdLinkPane = "";
+    }
+
+    private void ToggleSecondLink()
+    {
+        FirstLink = "";
+        FirstLinkPane = "";
+
+        SecondLink = "active";
+        SecondLinkPane = "show";
+
+        ThirdLink = "";
+        ThirdLinkPane = "";
+    }
+
+    private void ToggleThirdLink()
+    {
+        FirstLink = "";
+        FirstLinkPane = "";
+
+        SecondLink = "";
+        SecondLinkPane = "";
+
+        ThirdLink = "active";
+        ThirdLinkPane = "show";
+    }
+
+}

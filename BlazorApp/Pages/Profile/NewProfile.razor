@@ -1,0 +1,191 @@
+﻿@*@layout AuthLayout*@
+
+@using SharedLib.Models;
+@page "/profile/new"
+
+@if (!Session.LoggedIn)
+{
+    NavMan.NavigateTo("/");
+    return;
+}
+
+<h1 class="top-header">Create new profile</h1>
+<div class="form-wrapper white-bg">
+    <form @onsubmit="Submit">
+        @{
+            bool isOrg = Session.User.BusinessType != BusinessType.individual;
+        }
+
+        @if (isOrg)
+        {
+            <div class="form-group">
+                <label for="OrgName">Organisation Name</label>
+                <input type="text" class="form-control" id="OrgName" placeholder="Company/Organisation name" @bind="NProfile.OrgName" required>
+            </div>
+            <div class="form-group">
+                <h5>Representative information:</h5>
+            </div>
+        }
+
+        <div class="form-group">
+            <label for="FirstName">First Name</label>
+            <input type="text" class="form-control" id="FirstName" placeholder="First name" @bind="NProfile.FirstName" required>
+        </div>
+        <div class="form-group">
+            <label for="LastName">Last Name</label>
+            <input type="text" class="form-control" id="LastName" placeholder="Last name" @bind="NProfile.LastName" required>
+        </div>
+        <div class="form-group">
+            <label for="DoB">Date of birth</label>
+            @*<InputDate TValue="DateTime" @bind-Value="DoB" id="DoB" name="DoB"/>*@
+        <div class="form-row">
+            <div class="col" style="max-width: 70px;">
+                <input placeholder="Day" class="form-control" type="number" @bind="Day" required />
+            </div>
+            <div class="col" style="max-width: 70px;">
+                <input placeholder="Month" class="form-control" type="number" @bind="Month" required />
+            </div>
+            <div class="col" style="max-width: 90px;">
+                <input placeholder="Year" class="form-control" type="number" @bind="Year" required />
+            </div>
+            </div>
+            @*<input type="date" class="form-control" id="DoB" name="DoB" min="1930-01-01" @bind="NProfile.DoB" required>*@
+        </div>
+
+        <div class="form-group">
+            <div class="card-wrapper">
+                @if (!string.IsNullOrEmpty(NProfile.ProfilePicture))
+                {
+                    <div class="img" style="justify-content: center">
+                        <img src="@NProfile.ProfilePicture" style="max-width: 90%; max-height: 8rem; justify-self: center;" />
+                    </div>
+                }
+                <div class="container">
+                    <label for="ProfilePics">Profile Picture</label>
+                    @*<InputFile OnChange="@UploadImage" multiple/>*@
+                    <input type="file" class="form-control-file"
+                           style="border-radius: 15px"
+                           id="ProfilePics" name="ProfilePics" accept="image/png, image/jpeg, image/webp"
+                           @ref="_profilePic" @onchange="UploadImage">
+                </div>
+            </div>
+        </div>
+
+        @if (IsRegistering)
+        {
+            <button type="submit" disabled class="btn btn-success btn-block float-right"><span class="oi oi-margin-right oi-loop-circular spinning"></span>Loading</button>
+        }
+        else
+        {
+            <button type="submit" class="btn btn-success btn-block">Create profile</button>
+        }
+    </form>
+    @*<button type="submit" class="btn btn-info">Save profile info</button>*@
+</div>
+
+@code {
+    bool IsRegistering = false;
+    string ProfilePic = string.Empty;
+
+    int Day = 01;
+    int Month = 01;
+    int Year = 0;
+
+    //[Parameter]
+    //public string ImgUrl { get; set; }
+
+    //[Parameter]
+    //public EventCallback<string> OnChange { get; set; }
+
+    [Inject]
+    public IFileReaderService FileReaderService { get; set; }
+    //[Inject]
+    //public IProductHttpRepository Repository { get; set; }
+
+    public static ElementReference _profilePic;
+
+    SharedLib.Models.Profile NProfile = new SharedLib.Models.Profile();
+
+    protected override async void OnInitialized()
+    {
+        if (!Session.LoggedIn) NavMan.NavigateTo("/");
+
+        //Session.GotInfo = false;
+        Debug.WriteLine($"GOT INFO: {Session.GotInfo}");
+
+        while (!Session.GotInfo) await Task.Delay(1000);
+
+        Debug.WriteLine($"FINISHED WAITING, GOT INFO: {Session.GotInfo}");
+
+        await InvokeAsync(StateHasChanged);
+
+        base.OnInitialized();
+    }
+
+    async Task UploadImage()
+    {
+        var profilePics = await FileReaderService.CreateReference(_profilePic).EnumerateFilesAsync();
+        var pic = profilePics.FirstOrDefault();
+        if (pic is null)
+        {
+            ToastService.ShowToast("There was an error posting you image", ToastLevel.Error);
+            return;
+        };
+
+        using var resp = await pic.PostImage(MediaType.AccountImage);
+        if (resp.IsSuccessStatusCode)
+            NProfile.ProfilePicture = await resp.Content.ReadAsStringAsync();
+    }
+
+    async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(NProfile.ProfilePicture))
+        {
+            ToastService.ShowToast("Please upload a profile picture", ToastLevel.Warning);
+            return;
+        }
+        if (Year is 0)
+        {
+            ToastService.ShowToast("Please set your date of birth", ToastLevel.Warning);
+            return;
+        }
+        if (!DateTime.TryParse($"{Month}/{Day}/{Year}", out var dob))
+        {
+
+            return;
+        }
+
+        NProfile.DoB = dob;
+
+        IsRegistering = true;
+        await InvokeAsync(StateHasChanged);
+
+
+        //if (string.IsNullOrWhiteSpace(NProfile.ProfilePicture))
+        //{
+        //    ToastService.ShowToast("You need to upload a profile picture", ToastLevel.Warning);
+        //    return;
+        //}
+
+        using var resp = await Ez.GetHttpPostResponse("account/createprofile", new Dictionary<string, string> { { "jprofile", NProfile.ToJson() } });
+        if (resp.IsSuccessStatusCode)
+        {
+            var profile = (await resp.Content.ReadAsStringAsync()).FromJson<SharedLib.Models.Profile>();
+
+            Session.Token.ProfileId = profile.Id;
+            StorageService.SetItem("yupjobs_jwt", Session.Token);
+            Session.Profile = profile;
+
+            using var reauth = await Ez.GetHttpPostResponse($"auth/reauth");
+            if (reauth.IsSuccessStatusCode) Session.Token = (await reauth.Content.ReadAsStringAsync()).FromJson<Jwt>();
+
+            NavMan.NavigateTo("/profile");
+        }
+        else
+        {
+            ToastService.ShowToast($"{await resp.Content.ReadAsStringAsync()}", ToastLevel.Warning);
+        }
+
+        IsRegistering = false;
+    }
+}

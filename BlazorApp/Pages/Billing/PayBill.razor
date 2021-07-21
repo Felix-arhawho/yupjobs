@@ -1,0 +1,125 @@
+﻿@page "/bill/{Id}/pay"
+
+@if (Loading)
+{
+    <Loader/>
+}
+else if (AddMethod)
+{
+    <BlazorApp.Pages.Payment.AddPaymentMethod ResetAction="@(async ()=>
+                                                             {
+                                                                 await Session.RefreshPaymentMethods();
+                                                                 AddMethod = false;
+                                                                 StateHasChanged();
+                                                             })"/>
+}
+else
+{
+    <h1 class="top-header">Pay for bill #@Id</h1>
+    <div class="white-bg wallet">
+        <h3>Bill total: @(Bill.TotalAmountRequested+Bill.FailFees.Sum()) @Bill.Currency</h3>
+        <form @onsubmit="Pay">
+            <div class="form-group">
+                <label for="payment-method-list">Select payment method</label>
+                <div id="payment-method-list">
+                    @foreach (var method in Session.UserPaymentMethods)
+                    {
+                        if (method.Type is MethodType.SepaDirect && Bill.Currency != Currency.EUR) continue;
+                        <div @onclick="()=> SelectedMethod = method">
+                            <BlazorApp.Pages.Payment.PaymentMethod Method="method" Selected="SelectedMethod.Id == method.Id" />
+                        </div>
+                    }
+                </div>
+                <br /><br /><br />
+                <button class="btn btn-info" @onclick="()=>AddMethod=true">Add new payment method</button>
+            </div>
+            <hr />
+            <label>@error</label>
+            <button type="submit" disabled="@Loading" class="btn btn-success btn-block" >Pay bill</button>
+        </form>
+    </div>
+}
+
+@code {
+    UserPaymentMethod SelectedMethod = new UserPaymentMethod();
+
+    bool Loading = false;
+    bool AddMethod = false;
+    [Parameter] public string Id { get; set; }
+    public UserBill Bill = new UserBill();
+    string error = string.Empty;
+
+    async Task Pay()
+    {
+        Loading = true;
+        using var resp = await Ez.GetHttpPostResponse("billing/pay", new Dictionary<string, string>
+        {
+            {"id", Bill.Id },
+            {"methodId", SelectedMethod.Id }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            var obj = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+            if (obj.Value<bool>("redirect"))
+            {
+                Debug.WriteLine("Redirect");
+                var url = obj.Value<string>("url");
+                NavMan.NavigateTo(url);
+            }
+            else if (obj.Value<bool>("newtab"))
+            {
+                Debug.WriteLine("NewTab");
+                var url = obj.Value<string>("url");
+                await JsRuntime.InvokeVoidAsync("open", url, "_blank"/*, "location=yes,height=570,width=520,scrollbars=yes,status=yes"*/);
+                ToastService.ShowToast("Pay the invoice and the funds will appear shorty", ToastLevel.Info);
+            }
+            else if (obj.Value<bool>("paid"))
+            {
+                var bill = obj["bill"].ToObject<UserBill>();
+                Debug.WriteLine("Paid");
+                NavMan.NavigateTo("/success/pay/" + bill.Id);
+            }
+            else if (obj.Value<bool>("processing"))
+            {
+                NavMan.NavigateTo("/success/pay/pending");
+            }
+            else
+            {
+                Debug.WriteLine("NewTab");
+                ToastService.ShowToast("There was a error processing your payment", ToastLevel.Error);
+                error = obj["error"].ToString();
+            }
+        }
+        else
+        {
+
+        }
+
+        Loading = false;
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+        }
+
+        using var resp = await Ez.GetHttpPostResponse($"billing/get", new Dictionary<string, string>
+        {
+            {"id", Id }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            Bill = (await resp.Content.ReadAsStringAsync()).FromJson<UserBill>();
+        }
+        else NavMan.NavigateTo("/notfound");
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

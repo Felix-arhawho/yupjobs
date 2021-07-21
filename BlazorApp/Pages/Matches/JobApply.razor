@@ -1,0 +1,138 @@
+﻿@using SharedLib.Models;
+@page "/job/apply/{Id}"
+@inject IFileReaderService Reader
+
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+    <h1 class="top-header">Job application</h1>
+    <div class="white-bg">
+        <h3>Send job application for job: <a href="">@Post.Title</a></h3>
+        <form @onsubmit="Submit">
+            <div class="form-group">
+                <label for="Message">Your application message</label>
+                <textarea class="form-control" id="Message" rows="3" required @bind="Application.Message"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="DaysToC">Days to job completion</label>
+                <input type="number" class="form-control" name="DaysToC" required @bind="Application.DaysToCompletion"/>
+            </div>
+            <div class="form-group">
+                <label for="RequestedSalary">Requested salary</label>
+                <input @bind="Application.RequestedSalary" type="number" class="form-control" id="RequestedSalary" aria-describedby="RequestedSalary" placeholder="Enter your requested salary">
+                <label for="Currency">Currency</label>
+                <select class="form-control" name="Currency" @bind="Application.Currency">
+                    @foreach (var i in Enum.GetValues(typeof(Currency)))
+                    {
+                        <option value="@i">@i</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="images">Upload Images (2 max)</label>
+                <input type="file" multiple @ref="_ref"/>
+                <button class="btn btn-success btn-block" type="button" @onclick="UploadImages">Upload</button>
+                <div class="container-fluid">
+                    @foreach (var i in Application.Images)
+                    {
+                        <img src="@i" style="max-width: 10rem; max-height: 6rem" />
+                        <a @onclick="()=>Application.Images.Remove(i)">X</a>
+                    }
+                </div>
+            </div>
+            <label for="sbmt" style="color: red;">@error</label>
+            <button name="sbmt" type="submit" disabled="@Submitting" class="btn btn-primary btn-block">Send</button>
+        </form>
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; }
+    bool Loading = true;
+    string error = string.Empty;
+    bool Submitting = false;
+
+    ElementReference _ref;
+
+    public async Task UploadImages()
+    {
+        foreach (var i in await Reader.CreateReference(_ref).EnumerateFilesAsync())
+        {
+            var img = await (await i.PostImage()).Content.ReadAsStringAsync();
+            Application.Images.Add(img);
+            //_ = Task.Run(async () => await Ez.GetHttpPostResponse("media/setexpiry", new Dictionary<string, string>
+            //    {
+            //        {"id", img }
+            //    })
+            //);
+        }
+    }
+
+    async Task Submit()
+    {
+        Submitting = true;
+        await InvokeAsync(StateHasChanged);
+
+        Application.PostId = Id;
+        var resp = await Ez.GetHttpPostResponse($"match/apply", new Dictionary<string, string>
+            {
+                {"japplication", Application.ToJson() }
+            });
+
+        foreach(var i in Application.Images)
+            _ = Task.Run(async () => await Ez.GetHttpPostResponse("media/setexpiry", new Dictionary<string, string>
+                {
+                    {"id", i }
+                })
+            );
+
+
+        try
+        {
+            if (resp.IsSuccessStatusCode)
+                NavMan.NavigateTo($"/post/hire/{Id}");
+            else error = (await resp.Content.ReadAsStringAsync());
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine(e);
+        }
+        finally
+        {
+            resp.Dispose();
+        }
+
+        Submitting = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    SharedLib.Models.JobPost Post = null;
+    SharedLib.Models.JobApply Application = new SharedLib.Models.JobApply();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse($"post/gethire", new Dictionary<string, string>()
+        {
+            {"id", Id }
+        });
+
+        if (resp.IsSuccessStatusCode) Post = (await resp.Content.ReadAsStringAsync()).FromJson<JobPost>();
+        else NavMan.NavigateTo("/notfound");
+        var pres = await Ez.GetHttpPostResponse("info/canpost/" + Session.User.Id, null, false);
+        if (pres.IsSuccessStatusCode)
+        {
+            var resp2 = (await pres.Content.ReadAsStringAsync()).FromJson<Dictionary<string, bool>>();
+            if (!resp2["canapply"])
+            {
+                ToastService.ShowToast("You have posted too many times, please upgrade your subscription", ToastLevel.Info);
+                NavMan.NavigateTo("/");
+            }
+        }
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

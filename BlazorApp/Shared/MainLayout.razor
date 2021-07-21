@@ -1,0 +1,338 @@
+﻿@inherits LayoutComponentBase
+@inject Blazored.LocalStorage.ISyncLocalStorageService StorageService
+@using BlazorApp.Shared
+@inject IJSRuntime JsRuntime
+@using Microsoft.JSInterop
+@*<div class="container" style="width:100%; height:8rem; background-color:red">
+        <center>
+            <h3>THIS WEBSITE IS UNDER CONSTRUCTION</h3><hr />
+            <h4>Check out <a href="https://multia2z.com">MultiA2Z</a>, <a href="https://multibutic.com">Online shop</a> and <a href="https://multidimension.co">Multidimension</a></h4>
+        </center>
+    </div>*@
+
+<style>
+body { background: @(Session.Theme is ColorTheme.Dark ? "#36393f" : "#E4E5E8"); /*background-image: url('https://wallpaperaccess.com/full/1589954.jpg');*/ }
+.white-bg { background: @(Session.Theme is ColorTheme.Dark ? "#36393f" : "#E4E5E8"); /*background-image: url('https://wallpaperaccess.com/full/1589954.jpg00');*/ /*#dbdde0*/ }
+</style>
+
+@*<div class="sidepanel @NavMenuCssClass">
+        <NavMenu />
+    </div>*@
+
+<!--<nav class="navbar">
+    <div class="hamburger @NavMenuCssClass" @onclick="ToggleNavMenu">
+        <div class="hamburger-box">
+            <div class="hamburger-inner"></div>
+        </div>
+    </div>
+    <div class="person">-->
+@*<a>
+        <div class="onoffswitch">
+            <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="myonoffswitch" tabindex="0" checked>
+            <label class="onoffswitch-label" for="myonoffswitch">Theme: </label>
+        </div>
+    </a>*@
+<!--@if (!Session.LoggedIn)
+        {
+            <button class="btn btn-info" style="" @onclick="@(() => NavMan.NavigateTo("/login"))">
+                Log in
+            </button>
+            <button class="btn btn-info" style="" @onclick="@(() => NavMan.NavigateTo("/register"))">
+                Register
+            </button>
+        }
+        else
+        {
+            <div class="d-flex">
+
+                <button class="btn btn-info" style="" @onclick="@(() => NavMan.NavigateTo("/chat"))">
+                    Chat
+                </button>
+                <div class="dropdown dropleft ml-2">
+                    <button id="notificationButton" class="dropdown-toggle dropdown-toggle-icon" data-toggle="dropdown" type="button" aria-haspopup="true" aria-expanded="false"
+                            @onclick="() => this.shownotif = !this.shownotif">
+                        <i class="oi oi-bell"></i>
+                        <div class="notification-counter">@Session.Notifications.Count</div>
+                    </button>
+                    <div class="dropdown-menu notifdrop @(shownotif? "show":"")" aria-labelledby="notificationButton">
+                        <NotificationBox />
+                    </div>
+                </div>
+                <div class="dropdown dropleft ml-2">
+                    <button id="dropdownMenuButton" class="dropdown-toggle dropdown-toggle-icon" data-toggle="dropdown" type="button" aria-haspopup="true" aria-expanded="false"
+                            @onclick="e => this.show = !this.show"
+                            @onfocusout="OutFocus">
+                        <i class="oi oi-person"></i>
+                    </button>
+                    <div class="dropdown-menu  @(show? "show":"")" aria-labelledby="dropdownMenuButton">
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/profile/"+Session.Profile?.Id);
+                                                                                            })">Profile</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/account");
+                                                                                            })">Account</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/wallets");
+                                                                                            })">My wallet</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/jobs/mine");
+                                                                                            })">My Jobs</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/posts/mine");
+                                                                                            })">My Posts</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/listmethods");
+                                                                                            })">Payment Methods</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/interval/mine");
+                                                                                            })">Interval Payments</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/billing");
+                                                                                            })">Bills</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/wallet/transaction-history");
+                                                                                            })">Transaction history</a>
+                        <a class="dropdown-item" @onclick="@(e => {
+                                                                                                this.show = !this.show;
+                                                                                                NavMan.NavigateTo("/logout");
+                                                                                            })">Logout</a>
+                        @if (Session.Subscription?.Type == SubscriptionType.Free)
+                        {
+                            <a class="dropdown-item" @onclick="@(e=> { this.show = !this.show; NavMan.NavigateTo("/subscription"); })">Upgrade</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</nav>-->
+@*Andrew*@
+
+<main class="main main--alt">
+    <header>
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-block menu">
+                <span>
+                    <ion-icon name="menu-outline"></ion-icon>
+                </span>
+            </div>
+            <div class="action d-flex align-items-center">
+                <a href="" class="me-3">Login</a>
+                <a href="">Register</a>
+            </div>
+        </div>
+    </header>
+    <nav class="sidebar">
+        <div class="sidebar-content">
+            <div class="close-nav d-flex justify-content-end mt-3 mx-3">
+                <span>
+                    <ion-icon name="close-outline"></ion-icon>
+                </span>
+            </div>
+            <div class="d-flex justify-content-center mb-4">
+                <div class="title">YopJobs <span>Work freelance and find freelancers whenever needed</span></div>
+            </div>
+            <div class="action d-flex justify-content-center align-items-center mb-3">
+                <a href="" class="me-3">Login</a>
+                <a href="">Register</a>
+            </div>
+            <ul>
+                <li>
+                    <a href="#">
+                        <img src="../img/svg/ic_twotone-post-add.svg" alt="post-add"> Post job offer
+                    </a>
+                </li>
+                <li><a href="#"><img src="/img/svg/mdi_file-find-outline.svg" alt="find-file">Find a job</a></li>
+                <li><a href="#"><img src="/img/svg/bx_bx-share-alt.svg" alt="share-alt"> Share your profile</a></li>
+                <li>
+                    <a href="#">
+                        <img src="../img/svg/fluent_people-search-24-regular.svg" alt="share-alt">Find
+                        freelancers
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="content " @onmouseover="OutFocusNotif">
+        <div id="google_translate_element"></div>
+        <div>
+            @Body
+        </div>
+    </div>
+
+</main>
+
+
+
+
+
+    <Toast />
+
+    @code {
+        //public static bool IsLoggedIn { get => _loggedIn; set {
+        //        _loggedIn = value;
+
+        //    } } = false;
+
+        //private static bool _loggedIn = false;
+
+
+
+
+        [CascadingParameter] public IModalService ModalServ { get; set; }
+
+        private static bool AuthChecking = false;
+
+        protected override async Task OnInitializedAsync()
+        {
+            if (!StorageService.ContainKey("theme"))
+                StorageService.SetItem<ColorTheme>("theme", ColorTheme.Light);
+
+            Session.Theme = StorageService.GetItem<ColorTheme>("theme");
+
+            var versionTask = Task.Run(async () =>
+            {
+                using var resp = await Ez.GetHttpPostResponse("home/version");
+
+                if (resp.IsSuccessStatusCode)
+                {
+                    if (!StorageService.ContainKey("client_version"))
+                    {
+                        StorageService.SetItem<double>("client_version", double.Parse(await resp.Content.ReadAsStringAsync()));
+                    }
+
+                    if (StorageService.GetItem<double>("client_version") != double.Parse(await resp.Content.ReadAsStringAsync()))
+                    {
+                        StorageService.SetItem<double>("client_version", double.Parse(await resp.Content.ReadAsStringAsync()));
+                        await JsRuntime.InvokeVoidAsync("window.location.reload", true);
+                    }
+                }
+
+            });
+
+            if (StorageService.ContainKey("yupjobs_jwt"))
+            {
+                Session.Token = StorageService.GetItem<Jwt>("yupjobs_jwt");
+                if (await Session.Token.Valid())
+                {
+                    Session.LoggedIn = true;
+
+                    _ = Workers.GetSessionInfo();
+
+
+                    ToastService.ShowToast("Logged in", ToastLevel.Success);
+
+                    while (!Session.GotInfo)
+                        await Task.Delay(1000);
+
+
+                    //var resp = await Ez.GetHttpPostResponse("account/checkprofile");
+                    if (Session.Profile is null)
+                        NavMan.NavigateTo("/profile/new");
+                }
+                else
+                {
+                    StorageService.RemoveItem("yupjobs_jwt");
+                    Session.Logout();
+
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                        ToastService.ShowToast("You have been logged out", ToastLevel.Warning);
+                    });
+                    NavMan.NavigateTo("/");
+                }
+
+                if (!StorageService.ContainKey("accepted_cookies"))
+                {
+                    ModalServ.Show<Cookie>();
+                }
+            }
+
+            if (!AuthChecking) _ = Task.Run(async () =>
+            {
+                AuthChecking = true;
+                bool oldVal = Session.LoggedIn;
+                while (true)
+                {
+                    if (Session.LoggedIn != oldVal)
+                    {
+                        await InvokeAsync(StateHasChanged);
+                        oldVal = Session.LoggedIn;
+
+                        if (!Session.LoggedIn) NavMan.NavigateTo("/");
+                    }
+                    await Task.Delay(1000);
+                }
+            });
+
+
+            await base.OnInitializedAsync();
+        }
+
+
+
+
+
+        async void ReloadPage()
+        {
+            var url = await JsRuntime.InvokeAsync<string>("window.location.href");
+            NavMan.NavigateTo(url, true);
+        }
+
+        public static bool collapseNavMenu = false;
+
+        private string NavMenuCssClass => collapseNavMenu ? "is-active" : null;
+
+        public static void ToggleNavMenu()
+        {
+            collapseNavMenu = !collapseNavMenu;
+        }
+
+        public static void Collapse()
+        {
+            collapseNavMenu = false;
+        }
+
+        private bool show = false;
+        private bool shownotif = false;
+
+        private async Task OutFocus()
+        {
+
+            await Task.Delay(200);
+            this.show = false;
+        }
+        private async Task OutFocusNotif()
+        {
+
+            //await Task.Delay(200);
+            this.shownotif = false;
+        }
+
+
+        //protected override   void OnAfterRender(bool firstRender)
+        //{
+        //    if (firstRender)
+        //        JsRuntime.InvokeVoidAsync("toggleSidebar");
+        //}
+
+        //protected async override Task OnAfterRenderAsync(bool firstRender)
+        //{
+        //    if (firstRender)
+        //    await JsRuntime.InvokeVoidAsync("toggleSidebar");
+        //    await base.OnAfterRenderAsync(firstRender);
+        //}
+
+
+    }

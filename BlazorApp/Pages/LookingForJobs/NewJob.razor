@@ -1,0 +1,184 @@
+﻿@using SharedLib.Models;
+@page "/looking-for-jobs/new"
+
+<h1 class="top-header">Add new job search</h1>
+<div class="form-wrapper white-bg">
+    <form @onsubmit="Submit">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" class="form-control" id="title" @bind="Post.Title" placeholder="Enter post title">
+        </div>
+        <div class="form-group">
+            <label for="dsc">Description</label>
+            <textarea class="form-control" id="dsc" placeholder="Enter description" @bind="Post.Description" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="jtitle">Job Title / Technology</label>
+            <input class="form-control" name="jtitle" placeholder="Technology / Old Job Title (Javascript, Designer, etc)" type="text" @bind="Exp.Item1" />
+        </div>
+        <div class="form-group">
+            <label for="expyears">Years of experience</label>
+            <input class="form-control" name="expyears" placeholder="Years of experience" type="number" @bind="Exp.Item2" />
+        
+        </div>
+        <button class="btn btn-info" type="button" @onclick="@(() => { Post.Experience.Add(Exp); Exp = (string.Empty, 0); })">Add</button>
+        <hr />
+        <ul>
+            @foreach (var i in Post.Experience)
+            {
+                <li>@i.Item1 - @i.Item2 Years <a @onclick="@(()=>Post.Experience.Remove(i))">X</a></li>
+            }
+        </ul>
+        <div class="form-group">
+            <label for="Country">Country</label>
+            <input class="form-control" name="Country" @bind="Post.Country" placeholder="Country" />
+        </div>
+            @*<div class="form-group">
+                <label for="salary">Requested salary</label>
+                <div id="salary">
+                    <input type="number" class="form-control" @bind="Post.RequestedSalary[0]" placeholder="1200">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="currency">Currency</label>
+                <select required class="form-control" @bind="Post.Currency">
+                    @foreach (var cur in Enum.GetValues(typeof(Currency)))
+                    {
+                        <option value="@cur">@cur</option>
+                    }
+                </select>
+            </div>*@
+            <div class="form-group">
+                <label for="tags">Skills (use a comma ',' to save your tag)</label>
+                <hr />
+                <div>
+                    @foreach (var tag in Post.Tags)
+                    {
+                        <span class="tag" @onclick="() => Post.Tags.Remove(tag)">@tag</span>
+                    }
+                </div>
+                <hr />
+                <input type="text" class="form-control" id="tags" placeholder="Enter tags"
+                       @bind-value="newTag"
+                       @bind-value:event="oninput"
+                       @onkeyup="GetTags">
+                <hr />
+                <div>
+                    @foreach (var tag in ProposedTags)
+                    {
+                        if (Post.Tags.Contains(tag.TagName)) continue;
+                        <span class="tag" @onclick="() => Post.Tags.Add(tag.TagName)">@tag.TagName - <b>@tag.UseCount</b></span>
+                    }
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="category">Categories</label>
+                <select class="form-control" id="category" @onmouseup="()=> { if (!Post.Categories.Contains(cat)) Post.Categories.Add(cat); }" @bind="cat">
+                    @foreach (var cat in Enum.GetValues(typeof(JobCategory)))
+                    {
+                        <option value="@cat">@cat</option>
+                    }
+                </select>
+                <hr />
+                <div class="container-fluid">
+                    @foreach (var cat in Post.Categories)
+                    {
+                        <label>@cat.GetName() <a style="color: red;" @onclick="() => Post.Categories.Remove(cat)">X</a></label>
+                    }
+                </div>
+                <hr />
+                @*<button @onclick="()=>Post.Categories.Add(cat)" class="btn btn-info">Add</button>*@
+            </div>
+            <button type="submit" class="btn btn-info" disabled="@Submitting">Post</button>
+    </form>
+</div>
+
+@code {
+    JobCategory cat = JobCategory.Software;
+    JobSearchPost Post = new JobSearchPost();
+
+    (string, short) Exp = (string.Empty, 0);
+
+
+    int currentReqs = 0;
+    async Task GetTags()
+    {
+        try
+        {
+            if (newTag.Trim().Last() is ',')
+            {
+                newTag = new string(newTag.Trim(','));
+                Post.Tags.Add(newTag.Trim());
+                newTag = string.Empty;
+            }
+        }
+        catch { }
+
+        if (currentReqs > 1) return;
+        while (currentReqs > 0)
+            await Task.Delay(1000);
+
+        System.Threading.Interlocked.Increment(ref currentReqs);
+
+        using var resp = await Ez.GetHttpPostResponse($"tags/get/{newTag}");
+        if (resp.IsSuccessStatusCode)
+            ProposedTags = (await resp.Content.ReadAsStringAsync()).FromJson<List<DbTag>>();
+
+        System.Threading.Interlocked.Decrement(ref currentReqs);
+    }
+
+    string newTag = string.Empty;
+
+    List<DbTag> ProposedTags = new List<DbTag>();
+
+
+    bool Submitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            cnt++;
+            await Task.Delay(1000);
+            if (cnt > 6)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+        }
+
+        var pres = await Ez.GetHttpPostResponse("info/canpost/" + Session.User.Id, null, false);
+        if (pres.IsSuccessStatusCode)
+        {
+            var resp = (await pres.Content.ReadAsStringAsync()).FromJson<Dictionary<string, bool>>();
+            if (!resp["cansearch"])
+            {
+                NavMan.NavigateTo("/");
+                ToastService.ShowToast("You have posted too many times, please upgrade your subscription", ToastLevel.Info);
+            }
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    async Task Submit()
+    {
+        Submitting = true;
+        await InvokeAsync(StateHasChanged);
+        Post.UserId = Session.User.Id;
+        Post.PostDate = DateTime.UtcNow;
+        Post.ProfileId = Session.Profile.Id;
+        using var resp = await Ez.GetHttpPostResponse($"post/newsearch", new Dictionary<string, string>
+        {
+            {"jpost", Post.ToJson() },
+        });
+        if (resp.IsSuccessStatusCode)
+        {
+            NavMan.NavigateTo($"/looking-for-jobs/details/{await resp.Content.ReadAsStringAsync()}");
+        }
+
+        Submitting = false;
+        await InvokeAsync(StateHasChanged);
+    }
+}

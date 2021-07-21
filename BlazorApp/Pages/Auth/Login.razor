@@ -1,0 +1,176 @@
+﻿@using SharedLib.Models;
+@layout AuthLayout
+@page "/login"
+
+@*@inject NavigationManager navigationManager*@
+
+<style>
+    .card-wrapper {
+        min-width: 360px;
+    }
+    .card-header {
+        font-size: 20px;
+        text-align: center;
+        font-weight: 600;
+    }
+    .card {
+        -webkit-box-shadow: 0px 0px 6px 1px rgba(0,0,0,0.35);
+        -moz-box-shadow: 0px 0px 6px 1px rgba(0,0,0,0.35);
+        box-shadow: 0px 0px 6px 1px rgba(0,0,0,0.35);
+    }
+    .logo-img {
+        max-width: 100px;
+        position: relative;
+        margin: 0 auto 10px auto;
+        display: block;
+    }
+</style>
+
+<div class="card-wrapper">
+    <img class="logo-img" src="/icon-512.png" />
+    <div class="card">
+        <div class="card-header">
+            Login
+        </div>
+        <div class="card-body">
+            <form @onsubmit="Submit">
+                <div class="form-group">
+                    <label for="username">Username/Email:</label>
+                    <input type="text" class="form-control" name="username" @bind="login" required />
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control" name="password" @bind="password" required />
+                </div>
+                @if (IsLoginin)
+                {
+                    <button type="submit" class="btn btn-success btn-block float-right" disabled><span class="oi oi-margin-right oi-loop-circular spinning"></span>Loading</button>
+                }
+                else
+                {
+                    <button type="submit" class="btn btn-success btn-block">Login</button>
+                }
+                @if (NeedConf)
+                {
+                    <button type="button" class="btn btn-warning btn-block" @onclick="@(async ()=>
+                                                                                        {
+                                                                                            ToastService.ShowToast("We're sending an email to you", ToastLevel.Info);
+
+                                                                                            ConfSent = true;
+                                                                                            using var s = await Ez.GetHttpPostResponse("auth/remailconf", new Dictionary<string, string>
+                                                                                            {
+                                                                                                {"login", login }
+                                                                                            }, false);
+
+
+                                                                                            if (login.Contains('@'))
+                                                                                                await JsRuntime.InvokeVoidAsync("open", "_blank", $"https://{login.Split('@')[1]}");
+
+                                                                                        })" disabled="@ConfSent">
+                        @(ConfSent ? "Email sent" : "Resend email")
+                    </button>
+                }
+                else
+                {
+                    <a class="btn btn-info btn-block" href="/forgotpassword">Reset Password</a>
+                }
+                <a class="btn btn-info btn-block" href="/">Go home</a>
+
+            </form>
+            <div class="error">
+                <p>@error</p>
+            </div>
+        </div>
+        <div class="card-footer">
+            <span>Create an account</span>
+            <NavLink href="register" class="btn btn-info btn-block">Register</NavLink>
+        </div>
+    </div>
+</div>
+
+@code {
+    public virtual string login { get; set; } = string.Empty;
+    public virtual string password { get; set; } = string.Empty;
+
+    public virtual string error { get; set; } = string.Empty;
+
+    protected bool IsLoginin { get; set; } = false;
+
+    bool NeedConf = false;
+    bool ConfSent = false;
+
+    public string path = "auth/login";
+    Dictionary<string, string> form = new Dictionary<string, string>();
+
+    //public static bool GotInfo = false;
+
+    protected override void OnInitialized()
+    {
+        if (StorageService.ContainKey("yupjobs_jwt") && !Session.LoggedIn)
+        {
+            StorageService.RemoveItem("yupjobs_jwt");
+            Session.Logout();
+        }
+        else if (Session.LoggedIn) NavMan.NavigateTo("/");
+        base.OnInitialized();
+    }
+
+    public async Task Submit(EventArgs eventArgs)
+    {
+        try
+        {
+            IsLoginin = true;
+
+            form.Add("login", login);
+            form.Add("password", password);
+
+            using var response = await Ez.GetHttpPostResponse(path, form, false);
+            form.Clear();
+            if (response.IsSuccessStatusCode)
+            {
+                try
+                {
+                    string tokenString = await response.Content.ReadAsStringAsync();
+                    Session.Token = JsonConvert.DeserializeObject<Jwt>(tokenString);
+
+                    StorageService.SetItem("yupjobs_jwt", Session.Token);
+                    Session.LoggedIn = true;
+
+                    _ = Workers.GetSessionInfo()/*.ContinueWith(delegate { Workers.SessionWorkerStarted = false; })*/;
+
+                    Debug.WriteLine($"Logged in: {Session.LoggedIn}");
+
+                    while (!Session.GotInfo) await Task.Delay(250);
+                    Console.Write("GOT SESSION INFO");
+                    //await Task.Delay(10000);
+
+
+                    //var resp = await Ez.GetHttpPostResponse("account/checkprofile");
+                    if (Session.Profile != null)
+                        NavMan.NavigateTo("/");
+                    else NavMan.NavigateTo("/profile/new");
+
+                    }
+                    catch
+                    {
+                    NavMan.NavigateTo($"/otplogin/{await response.Content.ReadAsStringAsync()}");
+                    }
+            }
+            else
+            {
+                if ((short)response.StatusCode is 499) NeedConf = true;
+                error = response.Content.ReadAsStringAsync().Result;
+                //IsLoginin = false;
+            }
+        }
+        catch
+        {
+
+        }
+        finally
+        {
+            IsLoginin = false;
+        }
+
+    }
+}

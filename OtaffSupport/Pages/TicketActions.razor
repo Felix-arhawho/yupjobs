@@ -1,0 +1,87 @@
+﻿@page "/actions/{Id}"
+
+@if (Loading)
+{
+    <Loader />
+}
+else if (Act != Action.None)
+{
+    <button class="btn btn-danger btn-block btn-lg" @onclick="()=>Act = Action.None">Cancel</button>
+    switch (Act)
+    {
+        case Action.SendMoney:
+                <SendMoney Ticket="Ticket"/>
+            break;
+        case Action.SetSub:
+                <SetSubscription Ticket="Ticket"/>
+            break;
+        case Action.TicketView:
+                NavMan.NavigateTo($"/");
+                NavMan.NavigateTo($"/ticket/{Ticket.Id}");
+            break;
+        case Action.ModerateJob:
+                <ModerateJob/>
+            break;
+    
+    }
+
+            }
+            else
+            {
+<center>
+    <h3>Ticket Actions</h3>
+    <div class="btn-group" role="group" aria-label="Actions">
+        <button class="btn btn-info btn-lg" @onclick="()=>Act=Action.SendMoney">Send money to user</button>
+        <button class="btn btn-info btn-lg" @onclick="()=>Act=Action.SetSub">Set subscription</button>
+        <button class="btn btn-info btn-lg" @onclick="()=>Act=Action.Profile">Modify Profile</button>
+        <button class="btn btn-info btn-lg" @onclick="()=>Act=Action.Refund">Refund bill</button>
+        <button class="btn btn-info btn-lg" @onclick="()=>Act=Action.ModerateJob">Moderate Job</button>
+    </div>
+    <hr/>
+    <div class="btn-group" role="group" aria-label="Options">
+        <button class="btn btn-success btn-lg" @onclick="()=>Act=Action.TicketView">See ticket</button>
+        <button class="btn btn-danger btn-lg" @onclick="()=>Act=Action.PoolTicket">Close ticket</button>
+        <button class="btn btn-danger btn-lg" @onclick="()=>Act=Action.CloseTicket">Close ticket</button>
+    </div>
+
+
+</center>
+}
+
+    @code {
+        bool Loading = true;
+        [Parameter] public string Id { get; set; }
+        [Parameter] public SupportTicket Ticket { get; set; }
+
+        Action Act = Action.None;
+
+        Action _act = Action.None;
+
+        public enum Action
+        {
+            None,
+            SendMoney,
+            SetSub,
+            Profile,
+            Refund,
+            ModerateJob,
+            TicketView,
+            CloseTicket,
+            PoolTicket
+        }
+
+        protected override Task OnInitializedAsync()
+        {
+            if (Ticket is null)
+            {
+                Ticket = Db.SupportTickets.Find(x => x.Id == Id).FirstOrDefault();
+                if (Ticket is null)
+                {
+                    NavMan.NavigateTo("/");
+                }
+            }
+
+            Loading = false;
+            return base.OnInitializedAsync();
+        }
+    }

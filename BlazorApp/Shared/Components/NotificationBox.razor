@@ -1,0 +1,98 @@
+﻿
+<div class="notificationbox white-bg">
+    <div class="title">Notifications</div>
+    <div class="notifications">
+        @if (Session.Notifications.Count is 0)
+        {
+            <Loader/>
+        }
+        else
+            foreach (var notif in Session.Notifications.OrderByDescending(x=>x.Date))
+            {
+                _ = Task.Run(async delegate
+                {
+                    if (notif.Seen) return;
+
+                    using var resp = await Ez.GetHttpPostResponse("notifications/seen", new Dictionary<string, string> {
+                        {"id", notif.Id }
+                    });
+                });
+
+                <div @onclick="@(async ()=>
+                                          {
+                                              if (notif.Id is null || notif.Clicked) return;
+                                             using var resp = await Ez.GetHttpPostResponse("notifications/clicked", new Dictionary<string, string> {
+                                                {"id", notif.Id }
+                                             });
+                                          })">
+                    <Notification Notif="notif" />
+                </div>
+            }
+    </div>
+    @*<div class="see-older" @onclick="GetNotifs">
+        See older
+    </div>*@
+</div>
+
+@code {        
+    protected override async Task OnInitializedAsync()
+    {
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+
+        }
+        if (Session.Notifications.Count is 0)
+        {
+            Session.Notifications = new List<SharedLib.Models.Notification>()
+                {
+                    new SharedLib.Models.Notification
+                    {
+                        Title = "You have no notifications",
+                        Description = "This could be due to an error",
+                        Date = DateTime.Now,
+                        UserId = Session.User.Id
+                    }
+                };
+            //await InvokeAsync(StateHasChanged);
+        }
+        //GetNotifs();
+
+        await base.OnInitializedAsync();
+    }
+
+    //    async Task GetNotifs()
+    //{
+    //    while (!Session.GotInfo) await Task.Delay(1000);
+
+    //    await InvokeAsync(StateHasChanged);
+
+    //    using var resp = await Ez.GetHttpPostResponse("notifications/get", new Dictionary<string, string>()
+    //    {
+    //        {"since", (DateTime.UtcNow-TimeSpan.FromDays(360)).ToString() }
+    //    });
+
+    //    if (resp.IsSuccessStatusCode)
+    //    {
+    //        var notifs = JsonConvert.DeserializeObject<List<SharedLib.Models.Notification>>(await resp.Content.ReadAsStringAsync()).OrderByDescending(x => x.Date).ToList();
+
+    //        if (notifs.Count != 0)
+    //            Session.Notifications = notifs;
+
+    //        await InvokeAsync(StateHasChanged);
+    //    }
+    //    else if (Session.Notifications.Count is 0)
+    //    {
+    //        Session.Notifications = new List<SharedLib.Models.Notification>()
+    //        {
+    //            new SharedLib.Models.Notification
+    //            {
+    //                Title = "You have no notifications",
+    //                Description = "This could be due to an error",
+    //                Date = DateTime.Now,
+    //            }
+    //        };
+    //        await InvokeAsync(StateHasChanged);
+    //    }
+    //}
+}

@@ -1,0 +1,257 @@
+﻿@page "/profile/{ProfileId}"
+
+@if (IsLoading)
+{
+    <Loader />
+}
+else if (NotFound)
+{
+    <NotFound />
+}
+else if (Report)
+{
+    <BlazorApp.Pages.Support.Report Reset="()=>Report=false" Type="ReportType.User" TargetId="@ProfileId" />
+}
+else
+{
+    <div class="d-flex flex-column flex-md-row justify-content-start align-items-stretch">
+        <div class="">
+            <div class="profile-wrapper">
+                <div class="white-bg">
+                    <div class="img">
+                        <img src="@Profile.ProfilePicture" />
+                    </div>
+                    <div class="info">
+                        <div class="username">
+                            @Profile.Username
+                        </div>
+                        <div class="name">
+                            <span>@Profile.FirstName</span> <span>@(Profile.LastName.ToUpper().First()).</span>
+                        </div>
+                        <div class="dob">
+                            @($"{DateTime.Today.Year - Profile.DoB.Year} years")
+                        </div>
+                    </div>
+                </div>
+                @if (IsMine)
+                {
+                    <div class="options">
+                        <a href="/profile/edit">Edit profile</a>
+                    </div>
+                }
+                else
+                {
+                    <div class="options">
+                        <a @onclick="()=>Report=true">Report profile</a>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="flex-grow-1 ml-md-5">
+            <div class="review-panel">
+                <div class="white-bg">
+                    <span class="heading">User Rating</span>
+                    @*<span class="oi oi-star checked"></span>
+                    <span class="oi oi-star checked"></span>
+                    <span class="oi oi-star checked"></span>
+                    <span class="oi oi-star checked"></span>
+                    <span class="oi oi-star"></span>*@
+                    
+                    <p>@(Reviews?.Count > 0 ? Reviews?.Select(x => x.Rating)?.Cast<int>()?.Sum() / Reviews.Count : 0) average based on @Reviews?.Count() reviews.</p>
+                    <hr style="border:1px solid #f1f1f1">
+                    <div class="row">
+                        <div class="side">
+                            <div>5 star</div>
+                        </div>
+                        @*<div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-5"></div>
+                            </div>
+                        </div>*@
+                        <div class="side right">
+                            <div>@Reviews?.Count(x=>x.Rating == ReviewRating.Perfect)</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="side">
+                            <div>4 star</div>
+                        </div>
+                        @*<div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-4"></div>
+                            </div>
+                        </div>*@
+                        <div class="side right">
+                            <div>@Reviews?.Count(x=>x.Rating==ReviewRating.Satisfied)</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="side">
+                            <div>3 star</div>
+                        </div>
+                        @*<div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-3"></div>
+                            </div>
+                        </div>*@
+                        <div class="side right">
+                            <div>@Reviews?.Count(x=>x.Rating==ReviewRating.Unsatisfied)</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="side">
+                            <div>2 star</div>
+                        </div>
+                        @*<div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-2"></div>
+                            </div>
+                        </div>*@
+                        <div class="side right">
+                            <div>@Reviews?.Count(x=>x.Rating==ReviewRating.Bad)</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="side">
+                            <div>1 star</div>
+                        </div>
+                        @*<div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-1"></div>
+                            </div>
+                        </div>*@
+                        <div class="side right">
+                            <div>@Reviews?.Count(x=>x.Rating==ReviewRating.Horrible)</div>
+                        </div>
+                    </div>
+                    <hr style="border:1px solid #f1f1f1">
+                    <button @onclick="ToggleReviews" class="btn btn-secondary">Show reviews</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-bio">
+        <div class="white-bg">
+            <h3>Bio:</h3>
+            <p>
+                @Profile.TextBio
+            </p>
+            <hr />
+            <div class="container-fluid">
+                @foreach(var i in Profile.InfoPics)
+                {
+                    <div style="display:table-cell" @onclick="@(()=>
+                                                                {
+                                                                    var parms = new ModalParameters();
+                                                                    parms.Add("Src", i);
+                                                                    Modal.Show<ImgModal>("Profile Image", parms);
+                                                                })">
+                        <img src="@i"/>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="reviews @reviewClass">
+        @if (Reviews.Count > 0)
+        {
+        foreach (var rev in Reviews)
+        {
+        <div class="review white-bg">
+            <span class="heading" @onclick="@(()=>NavMan.NavigateTo("/profile/"+rev.TargetProfileId))">@rev.Username</span>
+            <span class="oi oi-star @((int)rev.Rating > 0 ? "checked" : "")"></span>
+            <span class="oi oi-star @((int)rev.Rating > 1 ? "checked" : "")"></span>
+            <span class="oi oi-star @((int)rev.Rating > 2 ? "checked" : "")"></span>
+            <span class="oi oi-star @((int)rev.Rating > 3 ? "checked" : "")"></span>
+            <span class="oi oi-star @((int)rev.Rating > 4 ? "checked" : "")"></span>
+            <hr style="border:1px solid #f1f1f1">
+            <p>
+                @rev.ReviewContent
+            </p>
+            <div class="date">
+                @rev.DatePosted
+            </div>
+        </div>
+        }
+        }
+        else
+        {
+        <div class="container">
+            <h3>There are no reviews for this profile</h3>
+        </div>
+        }
+    </div>
+}
+
+
+@code {
+    [Parameter] public string ProfileId { get; set; } = string.Empty;
+    public SharedLib.Models.Profile Profile = null;
+    public static List<ProfileReview> Reviews = new List<ProfileReview>();
+
+    bool IsLoading = true;
+    bool NotFound = false;
+    bool IsMine = false;
+    bool CommentsLoading = true;
+    bool Report = false;
+
+    private bool showReviews = false;
+    private string reviewClass => showReviews ? "is-active" : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var resp = await Ez.GetHttpPostResponse($"account/getprofile/{ProfileId}");
+
+            if (resp.IsSuccessStatusCode)
+            {
+                Profile = (await resp.Content.ReadAsStringAsync()).FromJson<SharedLib.Models.Profile>();
+
+                short waits = 0;
+
+                while (!Session.GotInfo && waits < 5 && Session.LoggedIn)
+                {
+                    await Task.Delay(1000);
+                    waits++;
+                    if (waits > 5) break;
+                }
+
+                IsMine = ProfileId == Session.Profile?.Id;
+
+            }
+            else
+            {
+                ToastService.ShowToast("Profile was not found", ToastLevel.Info);
+                IsLoading = false;
+                NotFound = true;
+            }
+
+
+            using var resp2 = await Ez.GetHttpPostResponse($"reviews/getprofile/{ProfileId}");
+            if (resp2.IsSuccessStatusCode)
+            {
+                Reviews = (await resp2.Content.ReadAsStringAsync()).FromJson<List<ProfileReview>>();
+            }
+
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine(e);
+        }
+
+        IsLoading = false;
+        await base.OnInitializedAsync();
+    }
+
+    private void ToggleReviews()
+    {
+        showReviews = !showReviews;
+
+        if (showReviews)
+        {
+
+        }
+    }
+}

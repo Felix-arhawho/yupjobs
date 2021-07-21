@@ -1,0 +1,35 @@
+﻿@page "/reports" 
+
+@if (Loading)
+{
+    <Loader/>
+}
+else
+{
+    <h3>Reports Pool</h3>
+    <div class="container">
+        @foreach (var rep in Db.ReportsCollection.All(x => x.StaffId == null).OrderBy(x => x.Date))
+        {
+            <button class="btn btn-success btn-block" @onclick="()=>
+                                                            {
+                                                                Db.ReportsCollection.UpdateOne(
+                                                                    x => x.Id == rep.Id, 
+                                                                    new UpdateDefinitionBuilder<SharedLib.Models.Report>().Set(x=>x.StaffId, Staff.Id));
+                                                            }">
+                Claim: @rep.Type - @rep.Reason
+            </button>
+        }
+    </div>
+}
+
+@code {
+    bool Loading = true;
+    StaffUser Staff = new StaffUser();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Staff = await StorageService.GetItemAsync<StaffUser>("user");
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

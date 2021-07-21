@@ -1,0 +1,95 @@
+﻿@using SharedLib.Models;
+@page "/posts/mine"
+
+@if (Loading)
+{
+    <Loader/>
+}
+else
+{
+    <h1 class="top-header">My posts</h1>
+    <div class="btn-group mb-5">
+        <a href="/looking-for-jobs/new" class="btn btn-info">Add new looking for jobs post</a>
+        <a href="/jobs/new" class="btn btn-info">Add new jobs post</a>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table white-bg">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 50px;">#</th>
+                    <th scope="col" style="width: 150px;">Date</th>
+                    <th scope="col">Title</th>
+                    <th scope="col" style="width: 220px;">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var cnt = 0; }
+                <tr style="background: #ff8503">
+                    <th colspan="4" style="text-align: center;color: #fff;">Search posts</th>
+                </tr>
+                @foreach (var post in SearchPosts)
+                {
+                    cnt++;
+                    <tr>
+                        <th scope="row">@cnt</th>
+                        <td>@post.PostDate.ToLongDateString()</td>
+                        <td>@post.Title</td>
+                        <td><a href="@($"/looking-for-jobs/details/{post.Id}")" class="btn btn-info">View</a><a href="@($"/looking-for-jobs/edit/{post.Id}")" class="btn btn-info">Edit</a><a class="btn btn-danger ml-2">Delete</a></td>
+                    </tr>
+
+                }
+                <tr style="background: #ff8503">
+                    <th colspan="4" style="text-align: center; color: #fff;">Job posts</th>
+                </tr>
+                @foreach (var post in JobPosts)
+                {
+                    cnt++;
+                    <tr>
+                        <th scope="row">@cnt</th>
+                        <td>@post.PostDate.ToLongDateString()</td>
+                        <td>@post.Title</td>
+                        <td><a href="@($"/post/hire/{post.Id}")" class="btn btn-info">View</a><a href="@($"/jobs/edit/{post.Id}")" class="btn btn-info">Edit</a><a class="btn btn-danger ml-2">Delete</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+}
+
+@code {
+    List<JobPost> JobPosts = new List<JobPost>();
+    List<JobSearchPost> SearchPosts = new List<JobSearchPost>();
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            cnt++;
+            await Task.Delay(1000);
+            if (cnt > 6)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+        }
+
+        using var resp = await Ez.GetHttpPostResponse($"post/mine");
+        if (resp.IsSuccessStatusCode)
+        {
+            var obj = JObject.Parse(await resp.Content.ReadAsStringAsync());
+            Debug.WriteLine(obj.ToString());
+
+            JobPosts = obj["jobposts"].ToObject<List<JobPost>>();
+            SearchPosts = obj["searchposts"].ToObject<List<JobSearchPost>>();
+        }
+
+        Loading = false;
+        //StateHasChanged();
+
+        await base.OnInitializedAsync();
+    }
+}

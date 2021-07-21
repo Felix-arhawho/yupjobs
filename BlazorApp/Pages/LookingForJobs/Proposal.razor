@@ -1,0 +1,71 @@
+﻿@*@page "/search/propose/{Id}"*@
+
+@if (Loading)
+{
+    <Loader/>
+}
+else
+{
+    <h2>Your proposal:</h2>
+
+    <div class="card">
+        <div class="card-body">
+            <form @onsubmit="Submit">
+                <label for="details">Proposal details</label>
+                <textarea @bind="JProposal.Message" name="details" type="text" class="form-control" placeholder="Proposal details" />
+                <br />
+                <label for="salary">Proposed salary</label>
+                <input @bind="JProposal.ProposedSalary" name="salary" type="number" class="form-control" placeholder="100" />
+                <hr />
+                <button class="btn btn-success" type="submit">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+}
+
+
+@code {
+    [Parameter] public JobSearchPost Post { get; set; } = new JobSearchPost();
+
+    public SearchProposal JProposal { get; set; } = new SearchProposal();
+
+    bool Loading = false;
+
+    async Task Submit()
+    {
+
+        if (JProposal.Message.Length < 50)
+        {
+            ToastService.ShowToast("The message is too short", ToastLevel.Warning);
+            return;
+        }
+        JProposal.PostId = Post.Id;
+        Loading = true;
+        await InvokeAsync(StateHasChanged);
+
+        using var resp = await Ez.GetHttpPostResponse($"match/propose", new Dictionary<string, string>
+        {
+            {"jproposal", JProposal.ToJson() }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            NavMan.NavigateTo($"/looking-for-jobs/details/{Post.Id}", true);
+        }
+        else ToastService.ShowToast(await resp.Content.ReadAsStringAsync(), ToastLevel.Error);
+
+
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+
+}

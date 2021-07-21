@@ -1,0 +1,60 @@
+﻿@page "/success/pay/{BillId}"
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+    <center>
+        <h3>Payment @(IsGood ? "success" : "failed")</h3>
+        <h4>@error</h4>
+    </center>
+}
+
+
+@code {
+    [Parameter] public string BillId { get; set; }
+
+    string error = string.Empty;
+    bool Loading = true;
+    bool IsGood = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+        }
+
+        using var resp = await Ez.GetHttpPostResponse("billing/confirmbill", new Dictionary<string, string>
+        {
+            {"billId", BillId }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            var obj = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+            if (obj.Value<bool>("processing"))
+            {
+                error = "Payment will be paid within 14 business days";
+            }
+            else if (obj.Value<bool>("paid"))
+            {
+                error = $"Paid {obj.Value<decimal>("total")} {obj.Value<string>("currency")}";
+            }
+            //else if (obj.Value<bool>(""))
+        }
+        else
+        {
+            error = await resp.Content.ReadAsStringAsync();
+
+
+        }
+
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+        await base.OnInitializedAsync();
+    }
+}

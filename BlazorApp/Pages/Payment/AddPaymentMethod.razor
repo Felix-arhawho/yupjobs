@@ -1,0 +1,45 @@
+﻿@page "/payment/add"
+
+<h1 class="top-header">Credit Card</h1>
+<div class="row">
+    <div class="col-lg-6 white-bg">
+        <AddCard ResetAction="ResetAction" />
+    </div>
+</div>
+@*<hr />
+<h1 class="top-header">SEPA Direct</h1>
+<div class="row">
+    <div class="col-lg-6 white-bg">
+        <AddSepa ResetAction="ResetAction" />
+    </div>
+</div>*@
+
+@*<hr />
+<h1 class="top-header">Sofort</h1>
+<div class="row">
+    <div class="col-lg-6 white-bg">
+        <AddCard ResetAction="ResetAction" />
+    </div>
+</div>*@
+
+@if (ResetAction != null)
+{
+    <div class="row">
+        <div class="col-lg-6 white-bg">
+            <center>
+                <button class="btn alert-danger" @onclick="ResetAction">Cancel</button>
+            </center>
+        </div>
+    </div>
+}
+
+@code {
+    //[Parameter] public string PostHref { get; set; } = null;
+
+    [Parameter] public Action ResetAction { get; set; } = null;
+
+    void OnSuccess()
+    {
+        //NavMan.NavigateTo(PostHref);
+    }
+}

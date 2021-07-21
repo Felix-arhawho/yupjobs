@@ -1,0 +1,166 @@
+﻿@using BlazorInputFile
+@inject IJSRuntime jsRuntime
+
+@if (Uploading)
+{
+    <Loader/>
+}
+else
+{
+
+    <div class="row">
+        <div class="col-12 p-0">
+
+            <input type="file" multiple title=""
+                   accept="image/png,image/gif,image/jpeg,image/webp"
+                   @ref="SelectedFiles" />
+            <div class="dropzone @dropClass rounded" @ondragenter="HandleDragEnter"
+                 @ondragleave="HandleDragLeave">
+                @*OnChange="HandleFileInputChange"*@
+
+                @*<input class="" id="fileInput" type="image" multiple title=""
+                        accept="image/png,image/gif,image/jpeg,image/webp"
+
+                    @ref="SelectedFiles"
+                         />*@
+                Upload images
+            </div>
+            @if ((fileTypeError || fileSizeError))
+            {
+                <ul class="validation-errors mb-0">
+                    @if (fileTypeError)
+                    {
+                        <li class="validation-message">Only image files are accepted.</li>
+                    }
+                    @if (fileSizeError)
+                    {
+                        <li class="validation-message">The max file size is @MaxFileSizeMB MB.</li>
+                    }
+                </ul>
+            }
+            @*@if (selectedFiles != null && selectedFiles.Count > 0)
+                {
+                    <div class="col-12">
+                        <ul>
+                            @foreach (var file in selectedFiles)
+                            {
+                                <li>
+                                    @file.Name
+                                    <button class="btn btn-link text-danger p-0 pl-1" type="button"
+                                            @onclick="@(e => RemoveFile(file))">
+                                        <small class="align-text-bottom">Remove</small>
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }*@
+
+            <hr />
+            <button class="btn btn-primary btn-block" @onclick="Action">Upload images</button>
+            <hr />
+            @foreach (var img in ImagesOutput)
+            {
+                <label>@img</label>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    const int MaxFileSizeMB = 5;
+    const int MaxFileSize = MaxFileSizeMB * 1024 * 1024; // 5MB
+    private string dropClass = "";
+    private bool fileSizeError = false;
+    private bool fileTypeError = false;
+
+    bool Uploading = false;
+
+    public List<IFileListEntry> selectedFiles = new List<IFileListEntry>();
+
+    /// <summary>
+    /// Write function to upload images on upload button click
+    /// </summary>
+    [Parameter] public Action Action2 { get; set; }
+    public Action Action { get; set; }
+
+    public static List<string> ImagesOutput = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Action = async delegate
+        {
+            ImagesOutput.Clear();
+            var ref1 = FileReaderService.CreateReference(DragDrop.SelectedFiles);
+            var tls = new Task[0];
+            foreach (var i in await ref1.EnumerateFilesAsync())
+            {
+                var t = Task.Run(async delegate
+                {
+                    var img = await i.PostImage(MediaType.AccountImage);
+                    if (img.IsSuccessStatusCode)
+                    {
+                        //NewProfile.InfoPics.Add(await img.Content.ReadAsStringAsync());
+                        Debug.WriteLine("Image => " + await img.Content.ReadAsStringAsync());
+                    }
+                    else ToastService.ShowToast("There was an error processing the image", ToastLevel.Error);
+                });
+                tls.Append(t);
+            }
+            await Task.WhenAll(tls);
+            await Task.Run(Action2);
+        };
+        await base.OnInitializedAsync();
+    }
+
+    [Inject]
+    IFileReaderService FileReaderService { get; set; }
+    public static ElementReference SelectedFiles = new ElementReference();
+
+    private void HandleDragEnter()
+    {
+        dropClass = "dropzone-drag";
+    }
+
+    private void HandleDragLeave()
+    {
+        dropClass = "";
+    }
+
+    private async Task HandleFileInputChange(IFileListEntry[] files)
+    {
+        dropClass = "";
+        fileSizeError = false;
+        fileTypeError = false;
+        List<string> acceptedFileTypes = new List<string>() { "image/png", "image/jpeg", "image/gif" };
+        if (files != null)
+        {
+            foreach (var file in files)
+            {
+                bool error = false;
+                if (file.Size > MaxFileSize)
+                {
+                    error = true;
+                    fileSizeError = true;
+                }
+
+                if (!acceptedFileTypes.Contains(file.Type))
+                {
+                    error = true;
+                    fileTypeError = true;
+                }
+
+                //keep the good files
+                if (!error)
+                {
+                    selectedFiles.Add(file);
+                }
+            }
+        }
+    }
+
+    private void RemoveFile(IFileListEntry file)
+    {
+        selectedFiles.Remove(file);
+    }
+}

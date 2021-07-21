@@ -1,0 +1,218 @@
+﻿@using SharedLib.Models;
+@page "/jobs/edit/{JobId}"
+
+@if (IsLoading)
+{
+    <Loader />
+}
+else if (NotFound)
+{
+    <NotFound />
+}
+else
+{
+<h1 class="top-header">Edit job</h1>
+<div class="form-wrapper white-bg">
+    <form @onsubmit="Submit">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input required type="text" @bind="Post.Title" class="form-control" id="title" placeholder="Enter job title">
+        </div>
+        <div class="form-group">
+            <label for="dsc">Description</label>
+            <textarea class="form-control" id="dsc" placeholder="Enter job description" rows="3"
+                      required
+                      @bind-value:event="onchange"
+                      @bind-value="Post.Description"
+                      @oninput="@(() =>
+                                  {
+                                      if (Post.Description.Length > 2500)
+                                          Post.Description = new string(Post.Description.Take(2500).ToArray());
+                                  })"></textarea>
+        </div>
+        <div class="form-group">
+            <center>
+                <label>Salary range</label>
+            </center>
+            <label for="salary">Minimum pay</label>
+            <input required type="number" class="form-control" id="salary" @bind="Post.ProposedSalary[0]">
+            <label for="salary2">Maximum pay</label>
+            <input required type="number" class="form-control" id="salary2" @bind="Post.ProposedSalary[1]">
+        </div>
+        <div class="form-group">
+            <label for="currency">Currency</label>
+            <select required class="form-control" @bind="Post.Currency">
+                @foreach (var cur in Enum.GetValues(typeof(Currency)))
+                {
+                    <option value="@cur">@cur</option>
+                }
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="tags">Tags</label>
+            <hr />
+            <div>
+                @foreach (var tag in Post.Tags)
+                {
+                    <span class="tag" @onclick="() => Post.Tags.Remove(tag)">@tag</span>
+                }
+            </div>
+            <hr />
+            <input type="text" class="form-control" id="tags" placeholder="Enter tags"
+                   @bind-value="newTag"
+                   @bind-value:event="oninput"
+                   @onkeyup="GetTags">
+            <hr />
+            <div>
+                @foreach (var tag in ProposedTags)
+                {
+                    if (Post.Tags.Contains(tag.TagName)) continue;
+                    <span class="tag" @onclick="() => Post.Tags.Add(tag.TagName)">@tag.TagName - <b>@tag.UseCount</b></span>
+                }
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="category">Categories</label>
+            <select class="form-control" id="category" @bind="lastCat">
+                @foreach (var cat in Enum.GetValues(typeof(JobCategory)))
+                {
+                    <option value="@cat">@cat</option>
+                }
+            </select>
+            <hr />
+            <ul>
+                @foreach (var cat in Post.Categories)
+                {
+                    if (cat is JobCategory.Any) continue;
+                    <li>@cat <a style="color: red" @onclick="() => Post.Categories.Remove(cat)">X</a></li>
+                }
+            </ul>
+        </div>
+        <hr />
+        <label>@error</label>
+        <button type="submit" id="smtbtn" disabled="@Submitting" class="btn btn-info">Edit job offer</button>
+    </form>
+</div>
+}
+@code {
+    bool IsLoading = true;
+    bool NotFound = false;
+    string error = string.Empty;
+    bool Submitting = false;
+
+    [Parameter]
+    public string JobId { get; set; } = string.Empty;
+
+    public SharedLib.Models.JobPost Post = null;
+
+    int currentReqs = 0;
+    async Task GetTags()
+    {
+        try
+        {
+            if (newTag.Last() is ' ' || newTag.Trim().Last() is ',')
+            {
+                newTag = new string(newTag.Trim(','));
+                Post.Tags.Add(newTag.Trim());
+                newTag = string.Empty;
+            }
+        }
+        catch { }
+
+        if (currentReqs > 1) return;
+        while (currentReqs > 0)
+            await Task.Delay(1000);
+
+        System.Threading.Interlocked.Increment(ref currentReqs);
+
+        using var resp = await Ez.GetHttpPostResponse($"tags/get/{newTag}");
+        if (resp.IsSuccessStatusCode)
+            ProposedTags = (await resp.Content.ReadAsStringAsync()).FromJson<List<DbTag>>();
+
+        System.Threading.Interlocked.Decrement(ref currentReqs);
+    }
+
+    string newTag = string.Empty;
+    List<DbTag> ProposedTags = new List<DbTag>();
+
+    JobCategory lastCat
+    {
+        get => lastCatVal; set
+        {
+            lastCatVal = value;
+            if (!Post.Categories.Contains(lastCatVal) && lastCatVal != JobCategory.Any)
+                Post.Categories.Add(lastCatVal);
+        }
+    }
+    JobCategory lastCatVal = JobCategory.Any;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var resp = await Ez.GetHttpPostResponse("post/gethire", new Dictionary<string, string>
+            {
+                    {"id", JobId}
+                }, false);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                if (resp.IsSuccessStatusCode)
+                    Post = (await resp.Content.ReadAsStringAsync()).FromJson<SharedLib.Models.JobPost>();
+                else NavMan.NavigateTo("/notfound");
+
+                IsLoading = false;
+            }
+            else
+            {
+                ToastService.ShowToast("Job was not found", ToastLevel.Info);
+                IsLoading = false;
+                NotFound = true;
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine(e);
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+
+
+    async Task Submit()
+    {
+        Submitting = true;
+        await InvokeAsync(StateHasChanged);
+
+        Post.Active = true;
+        Post.Id = JobId;
+
+
+        using var resp = await Ez.GetHttpPostResponse("job/update", new Dictionary<string, string>
+{
+            {"jpost", Post.ToJson() },
+        });
+
+        if (Post.Categories.Count is 0)
+        {
+            error = "You need to add a category";
+            return;
+        }
+        else if (!Post.VerifyContent(Session.Subscription.Type))
+        {
+            error = "Please input all the fields";
+            return;
+        }
+         
+        var content = await resp.Content.ReadAsStringAsync();
+
+        if (resp.IsSuccessStatusCode)
+            NavMan.NavigateTo($"/post/hire/{Post.Id}");
+        else error = content;
+
+        Submitting = false;
+        StateHasChanged();
+    }
+}

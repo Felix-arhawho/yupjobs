@@ -1,0 +1,54 @@
+﻿@page "/interval/mine"
+
+@if (Loading)
+{
+    <h3>Interval Payments List</h3>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table white-bg">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 150px;">Title</th>
+                    <th scope="col">Last Payment</th>
+                    <th scope="col">Next payment</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Orders)
+                {
+                    <tr>
+                        <td>@order.Title</td>
+                        <td>@order.LastPayment.Print()</td>
+                        <td>@((order.LastPayment+order.PaymentInterval).Print())</td>
+                        <td>@order.Payment @order.Currency</td>
+                        <td>@(order.Active ? "Ongoing" : "Stopped")</td>
+                        <td><a href="@($"/interval/view/{order.Id}")" class="btn btn-info">Details</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+
+
+@code {
+    List<IntervalPaymentOrder> Orders = new List<IntervalPaymentOrder>();
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse("interval/get", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            Orders = (await resp.Content.ReadAsStringAsync()).FromJson<List<IntervalPaymentOrder>>();
+        }
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

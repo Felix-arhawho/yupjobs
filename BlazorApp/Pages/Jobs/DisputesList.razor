@@ -1,0 +1,77 @@
+﻿@using SharedLib.Models
+@page "/disputes"
+
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+    <h3>List of your disputes</h3>
+    @if (DisputeList != null)
+    {
+        @foreach (var i in DisputeList)
+        {
+            @i.Id
+            @i.JobId
+            @i.StaffAssigned
+            @i.StaffIds
+            @i.UserIds.Select(x=>x.Item2)
+        }
+    }
+    else
+    {
+        <p>No disputes found</p>
+    }
+}
+
+<div class="table-responsive">
+    <table class="table white-bg">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 50px;">#</th>
+                <th scope="col" style="width: 150px;">Date</th>
+                <th scope="col">User Ids</th>
+                <th scope="col">Staff Ids</th>
+                <th scope="col">Staff Assigned</th>
+                <th scope="col">Job</th>
+                <th scope="col">Conversation</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td scope="col" style="width: 50px;">#</td>
+                <td scope="col" style="width: 150px;">Date</td>
+                <td scope="col">User Ids</td>
+                <td scope="col">Staff Ids</td>
+                <td scope="col">Staff Assigned</td>
+                <td scope="col">Job</td>
+                <td scope="col">Conversation</td>
+            </tr>
+        </tbody>
+        </table>
+</div>
+
+@code {
+    bool Loading = true;
+    List<Dispute> DisputeList = new List<Dispute>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+        }
+
+        using var resp = await Ez.GetHttpPostResponse("disputes/get");
+        if (resp.IsSuccessStatusCode)
+        {
+            DisputeList = (await resp.Content.ReadAsStringAsync()).FromJson<List<Dispute>>();
+        }
+
+        Loading = false;
+        StateHasChanged();
+        await base.OnInitializedAsync();
+    }
+}

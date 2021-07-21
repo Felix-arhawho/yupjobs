@@ -1,0 +1,44 @@
+﻿<div class="navigation">
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <NavLink class="nav-link" href="" @onclick="MainLayout.Collapse" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span><span class="title">Home</span>
+            </NavLink>
+        </li>
+        <li class="nav-item">
+            <NavLink class="nav-link" href="jobs" @onclick="MainLayout.Collapse">
+                <span class="oi oi-briefcase" aria-hidden="true"></span><span class="title">Job listings</span>
+            </NavLink>
+        </li>
+        <li class="nav-item">
+            <NavLink class="nav-link" href="looking-for-jobs" @onclick="MainLayout.Collapse">
+                <span class="oi oi-list-rich" aria-hidden="true"></span><span class="title">Look for freelancers</span>
+            </NavLink>
+        </li>
+        <li class="nav-item">
+            <NavLink class="nav-link" href="jobs/new" @onclick="MainLayout.Collapse">
+                <span class="oi oi-list-rich" aria-hidden="true"></span><span class="title">Post a job offer</span>
+            </NavLink>
+        </li>
+        <li class="nav-item">
+            <NavLink class="nav-link" href="/looking-for-jobs/new" @onclick="MainLayout.Collapse">
+                <span class="oi oi-list-rich" aria-hidden="true"></span><span class="title">Promote your profile</span>
+            </NavLink>
+        </li>
+        @if (Session.LoggedIn)
+        {
+            <li class="nav-item">
+                <NavLink class="nav-link" href="chat" @onclick="MainLayout.Collapse">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span><span class="title">Chat</span>
+                </NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="nav-link" href="support" @onclick="MainLayout.Collapse">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span><span class="title">Support</span>
+                </NavLink>
+            </li>
+        }
+    </ul>
+</div>
+

@@ -1,0 +1,228 @@
+﻿@page "/post/hire/{Id}"
+
+@if (Loading)
+{
+    <Loader />
+}
+else if (Hire)
+{
+    <JobHire Application="SelectedApply" Post="Post" ResetAction="()=> { Hire = false; StateHasChanged(); }" />
+}
+else if (Report)
+{
+    <BlazorApp.Pages.Support.Report TargetId="@ReportId" Reset="()=> { Report = false; StateHasChanged(); }" Type="ReportType.JobPost" />
+}
+else
+{
+    if (!Session.LoggedIn || Session.Subscription.Type is SubscriptionType.Free)
+    {
+        <div class="container-fluid">
+            <amp-ad width="100vw" height="320"
+                    type="adsense"
+                    data-ad-client="ca-pub-5294816076309463"
+                    data-ad-slot="1303136282"
+                    data-auto-format="rspv"
+                    data-full-width="">
+                <div overflow=""></div>
+            </amp-ad>
+        </div>
+    }
+    <div class='job-listing white-bg @Post.Active'>
+        <div class="top">
+            <span class="date">Added: @Post.PostDate</span>
+            <h3>
+                @Post.Title - <i>
+                    Posted by <a style="color: #ff8503" @onclick="@(async()=>
+                                                          {
+                                                              using var resp = await Ez.GetHttpPostResponse("account/profile/user/"+Post.UserId, null, false);
+                                                              if (resp.IsSuccessStatusCode)
+                                                              {
+                                                                  var profile = (await resp.Content.ReadAsStringAsync()).FromJson<Profile>();
+                                                                  NavMan.NavigateTo("/profile/"+profile.Id);
+                                                              }
+                                                          })">@Post.Username</a>
+                                                    </i>
+                                                </h3>
+                                                <div class="categories">
+                                                    <span>@Post.Views Views - </span>
+                                                    @foreach (var category in Post.Categories)
+                                                    {
+                                                        <span>@category, </span>
+                                                    }
+                                                </div>
+                                                <p>@Post.Description</p>
+                                            </div>
+                                            <div class="bottom">
+                                                <div class="salary">
+                                                    @Post.ProposedSalary[0] - @Post.ProposedSalary[1] @Post.Currency
+                                                </div>
+                                                <div class="tags">
+                                                    @foreach (var tag in Post.Tags)
+                                                    {
+                                                        <span class="tag">@tag</span>
+                                                    }
+                                                </div>
+                                                @if (Post.UserId != Session.User?.Id && !Applies.Any(x => x.UserId == Session.User?.Id))
+                                                {
+                                                    <div class="container-fluid">
+                                                        <button class="btn btn-info btn-block" @onclick="@(()=>
+                            {
+                                if (!Session.LoggedIn) NavMan.NavigateTo("/login");
+                                else
+                                    NavMan.NavigateTo($"/job/apply/{Post.Id}");
+                            })">
+                                                            Apply
+                                                        </button>
+                                                    </div>
+                                                }
+                                                <a @onclick="@(async()=>
+                                   {
+                                       ReportId = Post.Id;
+                                       Report = true;
+                                   })">Report this job</a>
+                                            </div>
+                                        </div>
+                                        @if (Applies.Count is 0 && Post.UserId == Session.User?.Id)
+                                        {
+                                            <div class="card-wrapper">
+                                                <div class="card">
+                                                    <div class="card-body">
+                                                        <h4>You have no applications for this post, try to <a href="@($"/promote/{Post.Id}/Job")">promote this job</a></h4>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <h1 class="top-header">Applies</h1>
+                                            <div class="applies">
+                                                @foreach (var apply in Applies)
+                                                {
+                                                    <div class="single-apply white-bg">
+                                                        <div class="top">
+                                                            <span class="date">@apply.Date.ToLongDateString()</span> <a href="@($"/profile/{apply.ProfileId}")">@apply.Username</a>
+                                                        </div>
+                                                        <hr />
+                                                        <div>
+                                                            <p>@apply.Message</p>
+                                                        </div>
+                                                        <div class="salary">
+                                                            <p>Requested salary: @apply.RequestedSalary @Post.Currency</p>
+                                                        </div>
+
+                                                        <div class="container-fluid">
+                                                            @foreach (var i in apply.Images)
+                                                            {
+                                                                <div @onclick="@(()=>
+                                                                                 {
+                                                                                     var parms = new ModalParameters();
+                                                                                     parms.Add("Src", i);
+                                                                                     Modal.Show<ImgModal>(string.Empty, parms);
+                                                                                 })">
+                                                                    <img src="@i" style="max-height: 3rem; max-width:6rem;" />
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                        @if (Post.UserId == Session.User?.Id)
+                                                        {
+                                                            <div class="container-fluid">
+                                                                <button class="btn btn-info btn-block" @onclick="@(() =>
+                                                                           {
+                                                                               Hire = true;
+                                                                               SelectedApply = apply;
+                                                                               StateHasChanged();
+                                                                           })">
+                                                                    Hire
+                                                                </button>
+                                                                <button class="btn btn-danger btn-block" @onclick="@(async () =>
+                                                                             {
+                                                                                 using var resp = await Ez.GetHttpPostResponse($"chat/newconv",
+                                                                                     new Dictionary<string, string>
+                                                                                 {
+                                                                                     {"target", apply.UserId },
+                                                                                     {"jmessage", new ChatMessage()
+                                                                                     {
+                                                                                         DateSent = DateTime.UtcNow,
+                                                                                         Content = $"{Session.User.Username} ",
+                                                                                         Hidden = false,
+                                                                                         UserId = Session.User.Id
+                                                                                     }.ToJson()}
+                                                                                 });
+
+                                                                                 if (resp.IsSuccessStatusCode)
+                                                                                 {
+                                                                                     NavMan.NavigateTo("/chat");
+                                                                                 }
+                                                                                 else ToastService.ShowToast("Failed to send message", ToastLevel.Error);
+                                                                             })">
+                                                                    Message
+                                                                </button>
+                                                            </div>
+                                                        }
+                                                        else if (apply.UserId == Session.User?.Id)
+                                                        {
+                                                            <a @onclick="@(async()=>
+                                       {
+                                           var resp = await Ez.GetHttpPostResponse("match/removeapply/"+apply.Id);
+                                           if (resp.IsSuccessStatusCode)
+                                               NavMan.NavigateTo("/jobs");
+                                           else ToastService.ShowToast("An error has occured", ToastLevel.Error);
+                                       })" style="color: red">Delete application</a>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                    }
+
+@code {
+    [Parameter] public string Id { get; set; }
+    bool Loading = true;
+    bool Hire = false;
+
+    JobApply SelectedApply = new JobApply();
+    Profile PosterProfile = new Profile();
+
+    string ReportId = string.Empty;
+    bool Report = false;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse("post/gethire", new Dictionary<string, string>
+{
+            {"id", Id}
+        }, false);
+        using var resp2 = await Ez.GetHttpPostResponse($"post/applies/{Id}", useToken: false);
+
+        if (resp2.IsSuccessStatusCode)
+            Applies = (await resp2.Content.ReadAsStringAsync()).FromJson<List<JobApply>>();
+        else NavMan.NavigateTo("/notfound");
+
+        if (resp.IsSuccessStatusCode)
+            Post = (await resp.Content.ReadAsStringAsync()).FromJson<SharedLib.Models.JobPost>();
+        else NavMan.NavigateTo("/notfound");
+        //using var resp3 = await Ez.GetHttpPostResponse("profile/user/" + Post.UserId);
+        //if (resp3.IsSuccessStatusCode)
+        //    PosterProfile = (await resp3.Content.ReadAsStringAsync()).FromJson<Profile>();
+
+
+
+        short cnt = 0;
+        while (!Session.GotInfo && Session.LoggedIn)
+        {
+            await Task.Delay(1000);
+            cnt++;
+            if (cnt > 5) break;
+        }
+
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+
+        await base.OnInitializedAsync();
+    }
+
+    List<JobApply> Applies = new List<JobApply>();
+    public SharedLib.Models.JobPost Post { get; set; } = new SharedLib.Models.JobPost();
+}

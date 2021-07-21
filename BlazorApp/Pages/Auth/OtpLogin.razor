@@ -1,0 +1,66 @@
+﻿@layout AuthLayout
+@page "/otplogin/{OtpId}"
+
+
+<style>
+    .logo-img {
+        max-width: 100px;
+        position: relative;
+        margin: 0 auto 10px auto;
+        display: block;
+    }
+</style>
+<div class="card-wrapper">
+    <img class="logo-img" src="/icon-512.png" />
+    <div class="card">
+        <div class="card-header">
+            Login
+        </div>
+        <div class="card-body">
+            <form @onsubmit="Login">
+                <div class="form-group">
+                    <label for="OtpCode">Please enter otp send to your email</label>
+                    <input @bind="OtpCode" class="form-control" placeholder="Code received by email" />
+                </div>  
+                <hr />
+                <button  type="submit" class="btn btn-success btn-block">Log in</button>
+                <button type="button" class="btn btn-warning btn-block" disabled="@ResendCode" @onclick="@(async()=>
+                                                                                                           {
+                                                                                                               ResendCode = true;
+                                                                                                               using var resp = await Ez.GetHttpPostResponse("auth/resend2facode",
+                                                                                                                   new Dictionary<string, string> { { "id", OtpId } }, false);
+                                                                                                               if (resp.IsSuccessStatusCode)
+                                                                                                                   NavMan.NavigateTo($"/otplogin/{await resp.Content.ReadAsStringAsync()}");
+                                                                                                               else ToastService.ShowToast("There was an error, try to reload the page", ToastLevel.Error);
+                                                                                                           })">Resend OTP</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+    @code {
+        [Parameter] public string OtpId { get; set; }
+
+        string OtpCode = string.Empty;
+        bool ResendCode = false;
+
+        async Task Login()
+        {
+            using var resp = await Ez.GetHttpPostResponse("auth/2falogin", new Dictionary<string, string>
+    {
+            {"otp", OtpCode },
+            {"id", OtpId }
+        });
+
+            if (resp.IsSuccessStatusCode)
+            {
+                StorageService.SetItem<Jwt>("yupjobs_jwt", (await resp.Content.ReadAsStringAsync()).FromJson<Jwt>());
+                NavMan.NavigateTo("/", true);
+                return;
+            }
+            else
+            {
+                ToastService.ShowToast("The code you entered is invalid", ToastLevel.Warning);
+            }
+        }
+    }

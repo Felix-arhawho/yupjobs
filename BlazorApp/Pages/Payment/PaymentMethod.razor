@@ -1,0 +1,68 @@
+﻿@*@page "/payment-method"*@
+
+@*<div class="container-fluid" style="border-style: solid; border-color: @(Selected ? "dimgrey" : "green" ); border-width: 3px; border-radius: 15px; padding: 1rem">*@
+@switch (Method.Type)
+{
+    case MethodType.CreditCard:
+        <div id="creditCard" class="payment-method @(Selected ? "active" : "")">
+            <div class="top">
+                <span>Credit Card</span>
+                <span class="float-right">@Method.MetaName</span>
+            </div>
+            <div class="bottom">
+                @Method.OwnerName
+            </div>
+        </div>
+
+        break;
+    case MethodType.SepaDirect:
+        <div id="sepa" class="payment-method @(Selected ? "active" : "")">
+            <div class="top">
+                <span>SEPA DIRECT</span>
+            </div>
+            <div class="bottom">
+                @Method.MetaName
+            </div>
+            <div class="bottom">
+                @Method.OwnerName
+            </div>
+        </div>
+
+        break;
+
+    case MethodType.Przelewy24:
+        <div id="p24" class="payment-method @(Selected ? "active" : "")">
+            <div class="top">
+                <span>P24 - Direct Bank Pay</span>
+            </div>
+            <div class="bottom">
+
+            </div>
+        </div>
+        break;
+    case MethodType.StripeInvoice:
+        <div id="creditCard" class="payment-method @(Selected ? "active" : "")">
+            <div class="top">
+                <span>Stripe Invoice</span>
+                <span class="float-right">Pay with Credit Cards, EPS, P24, Bancontact, Sofort, GPay, ApplePay</span>
+            </div>
+            <div class="bottom">
+                @Method.OwnerName
+            </div>
+        </div>
+        break;
+    case MethodType.YupWallet:
+        <div id="creditCard" class="payment-method @(Selected ? "active" : "")">
+            <div class="top">
+                <span>YupJobs Wallet</span>
+                <span class="float-right">Pay using your existing balance</span>
+            </div>
+        </div>
+        break;
+}
+@*</div>*@
+
+@code {
+    [Parameter] public UserPaymentMethod Method { get; set; }
+    [Parameter] public bool Selected { get; set; } = false;
+}

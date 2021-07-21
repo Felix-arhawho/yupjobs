@@ -1,0 +1,149 @@
+﻿@page "/wallet/recharge/{WalletId}"
+
+<h1 class="top-header">Add wallet funds</h1>
+@if (IsLoading)
+{
+    <Loader />
+}
+else if (AddMethod)
+{
+    <BlazorApp.Pages.Payment.AddPaymentMethod ResetAction="()=> { AddMethod = false; StateHasChanged(); }"/>
+}
+else
+{
+    <div class="white-bg wallet">
+        <form @onsubmit="TriggerRecharge">
+            <div class="form-group">
+                <label for="money">How much money you wish to add? (in @Wallet.Currency.GetName())</label>
+                <input type="number" name="money" @bind="ValueRef" placeholder="00" required class="form-control ">
+                <label for="curselect">Choose a currency</label>
+                <select name="curselect" @bind="RechCurrency">
+                    @foreach (var c in Enum.GetValues(typeof(Currency)))
+                    {
+                        <option value="@c">@c</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="payment-method-list">Select payment method</label>
+                <div id="payment-method-list">
+                    @foreach (var method in Session.UserPaymentMethods)
+                    {
+                        <div @onclick="()=> SelectedMethod = method">
+                            <BlazorApp.Pages.Payment.PaymentMethod Method="method" Selected="SelectedMethod.Id == method.Id" />
+                        </div>
+                    }
+                </div>
+                <br /><br /><br />
+                <button class="btn btn-info" @onclick="()=>AddMethod=true">Add new payment method</button>
+            </div>
+            <hr />
+            <div>
+                <h3>Total: @FeesCtl.WalletRechargeFee(ValueRef, RechCurrency)[1] @RechCurrency</h3>
+            </div>
+            <label for="sbmt">@error</label>
+            <button name="sbmt" class="btn btn-success btn-block" type="submit" disabled="@Submitting">Add funds</button>
+        </form><br />
+        <button class="btn btn-danger btn-block" @onclick="ResetAction">Cancel</button>
+    </div>
+}
+
+@code {
+    [Parameter] public string WalletId { get; set; }
+    [Parameter] public UserWallet Wallet { get; set; }
+    [Parameter] public Action ResetAction { get; set; }
+
+    bool Submitting = false;
+    string error = string.Empty;
+
+    Currency RechCurrency = Session.User.DefaultCurrency;
+
+    decimal ValueRef { get => Value; set => Value = value; }
+    decimal Value = FeesCtl.GetConvertedRate(10, Session.User.DefaultCurrency);
+
+    public UserPaymentMethod SelectedMethod = new UserPaymentMethod();
+
+    bool IsLoading = true;
+    bool AddMethod = false;
+
+    async Task TriggerRecharge()
+    {
+        if (SelectedMethod.Type is MethodType.StripeInvoice)
+            ToastService.ShowToast("You must allow popups in order to pay it Stripe Invoices", ToastLevel.Warning);
+
+        Submitting = true;
+
+        using var resp = await Ez.GetHttpPostResponse($"wallet/recharge", new Dictionary<string, string>
+        {
+            {"amount", Value.ToString()},
+            {"currency", RechCurrency.GetName()},
+            {"methodId", SelectedMethod.Id}
+        });
+
+        var stresp = await resp.Content.ReadAsStringAsync();
+        Debug.WriteLine(stresp);
+        if (resp.IsSuccessStatusCode)
+        {
+            var obj = JObject.Parse(stresp);
+
+            var dict = stresp.FromJson<Dictionary<string, dynamic>>();
+            Debug.WriteLine(dict.ToJson());
+
+            if (obj.Value<bool>("redirect"))
+            {
+                Debug.WriteLine("Redirect");
+                var url = obj.Value<string>("url");
+                NavMan.NavigateTo(url);
+                ResetAction();
+            }
+            else if (obj.Value<bool>("newtab"))
+            {
+                Debug.WriteLine("NewTab");
+                var url = obj.Value<string>("url");
+                await JsRuntime.InvokeVoidAsync("open", url, "_blank"/*, "location=yes,height=570,width=520,scrollbars=yes,status=yes"*/);
+                ToastService.ShowToast("Pay the invoice and the funds will appear shorty", ToastLevel.Info);
+                //NavMan.NavigateTo("/success/pay/pending");
+                //var parms = new ModalParameters();
+                //parms.Add("Url", url);
+                //Modal.Show<ContentFrame>("Pay invoice", parms);
+                ResetAction();
+            }
+            else if (obj.Value<bool>("paid"))
+            {
+                var bill = obj["bill"].ToObject<UserBill>();
+                Debug.WriteLine("Paid");
+                NavMan.NavigateTo("/success/pay/"+bill.Id);
+            }
+            else if (obj.Value<bool>("processing"))
+            {
+                NavMan.NavigateTo("/success/pay/pending");
+            }
+            else
+            {
+                Debug.WriteLine("NewTab");
+                ToastService.ShowToast("There was a error processing your payment", ToastLevel.Error);
+                error = dict["error"];
+            }
+        }
+        else
+        {
+
+        }
+
+        Submitting = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Wallet is null)
+        {
+
+        }
+        else
+        {
+            IsLoading = false;
+        }
+
+        await base.OnInitializedAsync();
+    }
+}

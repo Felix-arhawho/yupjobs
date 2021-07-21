@@ -1,0 +1,21 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "YupJobs - Find work online or hire freelancers, paid tutoring";
+}
+
+<div class="text-center">
+    <div class="container-fluid">
+        @foreach (var post in Db.JobPostsCollection.FindSync(x=>x.Active, new FindOptions<JobPost, JobPost>() {
+            Sort = new SortDefinitionBuilder<JobPost>().Descending(x=>x.PostDate),
+            Limit = 50,
+        }).ToList())
+        {
+            <div class="container-fluid">
+                <h1 href="/post?postId=@(post.Id)">@post.Title - posted on @post.PostDate.Print()</h1>
+                <a class="btn btn-lg btn-primary btn-block" href="https://www.yupjobs.net/post/hire/@(post.Id)" target="_blank">View post</a>
+            </div>
+            <hr />
+        }
+    </div>
+</div>

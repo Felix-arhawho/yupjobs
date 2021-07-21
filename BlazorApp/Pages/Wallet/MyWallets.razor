@@ -1,0 +1,39 @@
+﻿@page "/wallets"
+
+@if (IsLoading)
+{
+    <Loader />
+}
+else foreach (var w in Session.UserWallets)
+{
+    <Wallet UserWallet="w" />
+}
+
+@*<br />
+<div class="card-wrapper">
+    <div class="card-body container-fluid">
+        <center>
+            <button @onclick="()=>" class="btn btn-info btn-block">New wallet</button>
+        </center>
+    </div>
+</div>*@
+
+@code {
+
+    bool IsLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        short cnt = 0;
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+            cnt++;
+            if (cnt > 5) NavMan.NavigateTo("/login");
+        }
+
+        IsLoading = false;
+
+        await base.OnInitializedAsync();
+    }
+}

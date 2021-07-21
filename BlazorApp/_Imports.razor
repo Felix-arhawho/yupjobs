@@ -1,0 +1,32 @@
+﻿@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using Microsoft.JSInterop
+@using BlazorApp
+@using BlazorApp.Shared
+@using SharedLib.Lib
+@using BlazorApp.Lib
+@using BlazorApp.Pages
+@using BlazorApp.Shared.Components
+@using SharedLib.Models
+@using Newtonsoft.Json
+@using Tewr.Blazor.FileReader
+@*@using Microsoft.AspNetCore.Components.Forms*@
+@using System.Diagnostics
+@using Newtonsoft.Json.Linq
+@using Blazored.Modal
+@using Blazored.Modal.Services
+@using System.Linq
+
+@*INJECTS*@
+
+@inject ToastService ToastService
+@inject NavigationManager NavMan
+@inject IJSRuntime JsRuntime
+@inject Blazored.LocalStorage.ISyncLocalStorageService StorageService
+@inject Blazored.LocalStorage.ILocalStorageService AsyncStorageService
+@*@inject Blazored.Modal.BlazoredModal ModalService*@
+@inject IModalService Modal

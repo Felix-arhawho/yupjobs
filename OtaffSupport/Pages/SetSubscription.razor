@@ -1,0 +1,35 @@
+﻿<center>
+    <form>
+        <h3>Set Subscription</h3>
+        <hr />
+        <label>Months</label>
+        <input name="months" type="number" @bind="months"/>
+        <hr />
+        <label for="type">Type</label>
+        <select @bind="Type" name="type">
+            @foreach (var s in Enum.GetValues<SubscriptionType>())
+            {
+                <option value="@s">@s</option>
+            }
+        </select>
+    </form>
+</center>
+
+
+@code {
+    [Parameter] public SupportTicket Ticket { get; set; }
+
+    SubscriptionType Type = SubscriptionType.Personal;
+    int months = 0;
+
+    async Task Set()
+    {
+        var upd = new UpdateDefinitionBuilder<UserSubscription>()
+            .Set(x=>x.Type, Type)
+            .Set(x=>x.NextType, Type)
+            .Set(x=>x.ValidUntil, DateTime.UtcNow+TimeSpan.FromDays(months*30.5));
+
+        Db.SubscriptionsCollection.UpdateOne(x => x.UserId == Ticket.UserId, upd);
+    }
+
+}

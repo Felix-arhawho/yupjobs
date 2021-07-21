@@ -1,0 +1,225 @@
+﻿@using SharedLib.Models;
+@layout AuthLayout
+@page "/register"
+
+<style>
+    .card-wrapper {
+        width: 100%;
+        max-width: 360px;
+    }
+    .card-header {
+        font-size: 20px;
+        text-align: center;
+        font-weight: 600;
+    }
+    .card {
+        -webkit-box-shadow: 0px 0px 6px 1px rgba(0,0,0,0.35);
+        -moz-box-shadow: 0px 0px 6px 1px rgba(0,0,0,0.35);
+        box-shadow: 0px 0px 6px 1px rgba(0,0,0,0.35);
+    }
+    .logo-img {
+        max-width: 100px;
+        position: relative;
+        margin: 0 auto 10px auto;
+        display: block;
+    }
+</style>
+
+<div class="card-wrapper">
+    <img class="logo-img" src="/icon-512.png" />
+    <div class="card">
+        <div class="card-header">
+            Create new account
+        </div>
+        <div class="card-body">
+            <form @onsubmit="Submit">
+                <div class="form-group @usernameStatus">
+                    <label for="username">Username:</label>
+                    <input @onfocusout="CheckUser" type="text" class="form-control" name="username" @bind="username" required />
+                    <p class="info">@userInfo</p>
+                </div>
+                <div class="form-group @emailStatus">
+                    <label for="email">E-mail</label>
+                    <input @onfocusout="CheckEmail" type="email" class="form-control" name="email" @bind="email" required />
+                    <p class="info">@emailInfo</p>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control" name="password" @bind="password" required />
+                </div>
+                <div class="form-group">
+                    <label for="DefaultCurrency">Default Currency</label>
+                    <select name="DefaultCurrency" class="form-control" @bind="DefaultCurrency">
+                        @foreach (var curency in Enum.GetValues(typeof(Currency)))
+                        {
+                            <option value="@curency">@curency</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Account type</label>
+                </div>
+                <div class="container-fluid p-0 text-center">
+
+                    <label @onclick="() => Freelancer = true" class="btn btn-block  @(Freelancer ? "btn-success" : "btn-info")">Work</label>
+                    <label @onclick="() => Freelancer = false" class="btn btn-block  @(!Freelancer ? "btn-success" : "btn-info")">Hire</label>
+                </div>
+                @if (Freelancer)
+                {
+                    <div class="form-group">
+                        <label for="DefaultCurrency">Country (You need to be in one of the listed countries to work as a freelancer or take funds out of your account)</label>
+                        <select name="Country" class="form-control" @bind="Country">
+                            @foreach (var country in CountryAvailability.FreelancerSupport)
+                            {
+                                <option value="@country">@country</option>
+                            }
+                        </select>
+                    </div>
+                }
+                <hr />
+                <div class="container-fluid p-0">
+                    <label @onclick="() => BusinessType = BusinessType.individual" class="btn @(BusinessType is BusinessType.individual ? "btn-success" : "btn-info")">Individual</label>
+                    <label @onclick="() => BusinessType = BusinessType.company" class="btn @(BusinessType is BusinessType.company ? "btn-success" : "btn-info")">Company</label>
+                    <label @onclick="() => BusinessType = BusinessType.government_entity" class="btn @(BusinessType is BusinessType.government_entity ? "btn-success" : "btn-info")">Government</label>
+                </div>
+                <br />
+                <div class="container-fluid">
+                    <input @bind="TermsAccepted" type="checkbox" />
+                    <label> I accept the <a href="/tnc" target="_blank">terms and conditions</a> to use this website</label>
+                </div>
+                @if (IsRegistering)
+                {
+                    <button type="submit" disabled class="btn btn-success btn-block float-right"><span class="oi oi-margin-right oi-loop-circular spinning"></span>Loading</button>
+                }
+                else
+                {
+                    <button type="submit" disabled="@IsDisabled" class="btn btn-success btn-block">Register</button>
+                }
+                <a class="btn btn-info btn-block" href="/">Go home</a>
+            </form>
+            <div class="error">
+                <p>@error</p>
+            </div>
+            @*<div>
+                    <h4>STATUS: @status</h4>
+                </div>*@
+        </div>
+        <div class="card-footer">
+            <span>Already registered?</span>
+            <NavLink href="login" class="btn btn-info btn-block">Login</NavLink>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    bool TermsAccepted = false;
+    public virtual string username { get; set; } = string.Empty;
+    public virtual string email { get; set; } = string.Empty;
+    public virtual string password { get; set; } = string.Empty;
+
+    public virtual string error { get; set; } = string.Empty;
+    public virtual string userInfo { get; set; } = string.Empty;
+    public virtual string emailInfo { get; set; } = string.Empty;
+
+    public virtual string usernameStatus { get; set; } = string.Empty;
+    public virtual string emailStatus { get; set; } = string.Empty;
+
+    public virtual CountryCode Country { get; set; } = CountryCode.FR;
+    public virtual Currency DefaultCurrency { get; set; } = Currency.EUR;
+    public virtual BusinessType BusinessType { get; set; } = BusinessType.individual;
+
+    bool Freelancer = true;
+
+    protected bool IsDisabled { get; set; }
+
+    protected bool IsRegistering { get; set; } = false;
+
+    //string status = "WAITING";
+
+    public string path = "auth/register";
+    Dictionary<string, string> form = new Dictionary<string, string>();
+
+    public async Task Submit()
+    {
+        if (!TermsAccepted)
+        {
+            error = "Please accept the terms and conditions";
+            return;
+        }
+
+        IsRegistering = true;
+
+        form["username"] = username;
+        form["password"] = password;
+        form["email"] = email;
+        form["country"] = $"{((int)Country)}";
+        form["currency"] = $"{(int)DefaultCurrency}";
+        form["businessType"] = $"{(int)BusinessType}";
+
+        var response = await SharedLib.Lib.Ez.GetHttpPostResponse(path, form, false);
+
+        if (response.IsSuccessStatusCode)
+        {
+            IsRegistering = false;
+            NavMan.NavigateTo("/login");
+        }
+        else
+        {
+            Console.WriteLine(response.Content.ReadAsStringAsync().Result);
+            error = response.Content.ReadAsStringAsync().Result;
+            IsRegistering = false;
+            form.Clear();
+        }
+
+    }
+
+
+    public async Task CheckUser()
+    {
+        //form.Clear();
+        form["username"] = username;
+
+        var response = await SharedLib.Lib.Ez.GetHttpPostResponse("auth/checkusername", form, false);
+        if (response.IsSuccessStatusCode)
+        {
+            if(response.Content.ReadAsStringAsync().Result == "FREE")
+            {
+                userInfo = "Username available";
+                usernameStatus = "available";
+                IsDisabled = false;
+            } else
+            {
+                userInfo = "Username is already taken";
+                usernameStatus = "taken";
+                IsDisabled = true;
+            }
+            form.Clear();
+        }
+    }
+
+
+    public async Task CheckEmail()
+    {
+        form["email"] = email;
+
+        var response = await SharedLib.Lib.Ez.GetHttpPostResponse("auth/checkemail", form, false);
+        if (response.IsSuccessStatusCode)
+        {
+            if (response.Content.ReadAsStringAsync().Result == "FREE")
+            {
+                emailInfo = "E-mail available";
+                emailStatus = "available";
+                IsDisabled = false;
+            }
+            else
+            {
+                emailInfo = "E-mail is already taken";
+                emailStatus = "taken";
+                IsDisabled = true;
+            }
+            form.Clear();
+        }
+    }
+
+}

@@ -1,0 +1,58 @@
+﻿@page "/mine"
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+    <center>
+        <h4>Tickets</h4><br />
+        @foreach (var i in Db.SupportTickets.Find(x => x.StaffId == User.Id).ToList())
+        {
+            <div class="container-fluid ticketpool">
+                <h4>@i.RequestTitle</h4><hr />
+                <p>@i.Message</p><hr />
+                <button @onclick="@(()=>NavMan.NavigateTo("/ticket/" + i.Id))" class="btn btn-block btn-success">
+                    Open
+                </button>
+            </div>
+        }
+        <hr />
+        <h4>Reports</h4><br />
+        @foreach (var report in Db.ReportsCollection.Find(x => x.StaffId == User.Id).ToList())
+        {
+            <div class="container-fluid ticketpool">
+                <h4>@report.Type</h4><hr />
+                <h5>@report.Reason</h5><hr />
+                <button @onclick="@(()=>NavMan.NavigateTo("/report/"+report.Id))">See details</button>
+            </div>
+        }
+        <hr />
+        <h4>Disputes</h4><br />
+        @foreach(var dispute in Db.Disputes.All(x => x.StaffIds.Contains(User.Id)))
+                {
+                    <div class="container-fluid ticketpool">
+                        <h4>Job: @dispute.JobId</h4>
+                        <h5>@dispute.DateStarted.ToLongDateString()</h5>
+                        <button @onclick="@(()=>NavMan.NavigateTo("/modjob/"+dispute.JobId))">Go to dispute</button>
+                    </div>
+                }
+    </center>
+}
+
+
+@code {
+    StaffUser User = null;
+    Task<List<SupportTicket>> Task1 = Task.FromResult<List<SupportTicket>>(new List<SupportTicket>());
+
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        User = await StorageService.GetItemAsync<StaffUser>("user");
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+}

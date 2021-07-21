@@ -1,0 +1,73 @@
+﻿
+@layout AuthLayout
+@page "/logout"
+
+@using System.Timers
+<style>
+    .logo-img {
+        max-width: 100px;
+        position: relative;
+        margin: 0 auto 10px auto;
+        display: block;
+    }
+</style>
+<div class="card-wrapper">
+    <img class="logo-img" src="/icon-512.png" />
+    <div class="card">
+        <div class="card-body" style="align-content: center">
+            <h3>You are going to be logged out in <b>@Remaining</b> seconds</h3><br />
+            <button class="btn btn-danger" @onclick="@(()=>
+                                                       {
+
+                                                           Cancelled = true;
+                                                           Timer.Stop();
+                                                           //Timer.Close();
+                                                           //Timer.Dispose();
+                                                           ToastService.ShowToast("You are still logged in", ToastLevel.Info);
+                                                           NavMan.NavigateTo("/", true);
+                                                       })">
+                Cancel
+            </button>
+        </div>
+
+    </div>
+</div>
+
+
+@code {
+    static Timer Timer = new Timer();
+    short Remaining = 5;
+    static bool Cancelled = false;
+
+    protected override Task OnInitializedAsync()
+    {
+        Cancelled = false;
+        Timer.Interval = 1000;
+        Timer.Enabled = true;
+        Timer.Start();
+
+
+        Timer.Elapsed += delegate
+        {
+            Remaining--;
+            StateHasChanged();
+            Debug.WriteLine($"Logout cancelled => {Cancelled}");
+
+            if (Remaining is 0 && !Cancelled)
+            {
+                Debug.WriteLine($"Logout although cancelled => {Cancelled}");
+
+                StorageService.RemoveItem("yupjobs_jwt");
+                Session.Logout();
+            //Timer.Close();
+            //Timer.Dispose();
+            ToastService.ShowToast("You have been logged out", ToastLevel.Info);
+                NavMan.NavigateTo("/", true);
+            }
+        };
+
+
+        return base.OnInitializedAsync();
+    }
+
+}

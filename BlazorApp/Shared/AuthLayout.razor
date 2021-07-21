@@ -1,0 +1,44 @@
+﻿@inherits LayoutComponentBase
+
+
+    <Toast />
+
+    <style>
+
+        html, body, app, .wraper, .content {
+            min-height: 100vh;
+            
+        }
+
+        .content {
+            background: rgb(4,142,174);
+            background: linear-gradient(to bottom right, rgba(4,142,174,1) 0%, rgba(3,149,154,1) 100%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+
+    <div class="wraper">
+        <div class="content">
+            <div class="area">
+                <ul class="circles">
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                </ul>
+            </div>
+            @Body
+        </div>
+    </div>
+    @code {
+
+    }

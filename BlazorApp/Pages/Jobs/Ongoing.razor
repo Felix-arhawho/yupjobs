@@ -1,0 +1,254 @@
+﻿@page "/job/ongoing/{Id}"
+
+@if (Loading)
+{
+    <Loader />
+}
+else if (AddPayment)
+{
+    <JobPayment JobId="@Id" ResetAction="() => { AddPayment = false; StateHasChanged(); }" />
+}
+else
+{
+    <div class="card-wrapper">
+        <div class="card">
+            <div class="card-header">
+                <center>
+                    <h4>@Job.JobTitle - @Job.Payment @Job.Currency</h4>
+                    <h5>Status: @Enum.GetName(typeof(JobStatus), Job.Status)  @*is JobStatus.Started ? "Ongoing" : Job.Status is JobStatus.Disputed ? "Contested" : "Completed")*@</h5>
+                </center>
+                <hr />
+                <center>
+                    <p>@Job.OriginalPost?.Description</p>
+                </center>
+            </div>
+            <div class="card-body">
+                <div class="btn-toolbar justify-content-center flex-column flex-md-row" role="toolbar" aria-label="Ongoing job options">
+                    <div class="btn-group" role="group">
+                        <a href="/chat/@(Job.ConversationId)" class="btn btn-primary">Go to chat</a>
+                    </div>
+                    @if (!AddPayment && Job.EmployerId == Session.User.Id)
+                    {
+                        <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                            <button class="btn btn-info" @onclick="() => AddPayment = true">Add payment</button>
+                        </div>
+                    }
+                    else if (AddPayment)
+                    {
+                        <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                            <button @onclick="()=>AddPayment=true" class="btn btn-success">Send payment</button>
+                            <button @onclick="()=>AddPayment=false" class="btn btn-danger">Cancel</button>
+                        </div>
+                    }
+
+                    @if (!(Job.Status is JobStatus.Completed))
+                    {
+                        if (ConfirmComplete)
+                        {
+                            <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                                <button class="btn btn-success" @onclick="@(async()=>{await ChangeStatus(JobStatus.Completed); ConfirmComplete = false; })">CONFIRM</button>
+                                <button class="btn btn-danger" @onclick="()=>ConfirmComplete=false">CANCEL</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                                <button class="btn btn-success" @onclick="()=>ConfirmComplete=true">Complete job</button>
+                            </div>
+                        }
+                    }
+                    else if (Review is null)
+                    {
+                        <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                            <a class="btn btn-success" href="@($"/job/rate/{Job.Id}")">Leave a review</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                            <a class="btn btn-success" href="@($"/job/review/{Job.Id}")">View review</a>
+                        </div>
+                    }
+
+                    @if (ConfirmContest)
+                    {
+                        <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                            <button class="btn btn-danger" @onclick="@(async ()=> { await ChangeStatus(JobStatus.Disputed); ConfirmContest=false; })">CONFIRM</button>
+                            <button class="btn btn-success" @onclick="()=>ConfirmContest=false">CANCEL</button>
+                        </div>
+                    }
+                    else if (Job.Status != JobStatus.Disputed)
+                    {
+                        <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                            <button class="btn btn-danger" @onclick="()=>ConfirmContest=true">Dispute job</button>
+                        </div>
+                    }
+                    else if (Job.Status is JobStatus.Disputed)
+                    {
+                        <div class="btn-group mt-2 mt-md-0 ml-md-2" role="group">
+                            <a href="/disputes" class="btn btn-primary" @onclick="()=>ConfirmContest=true">View disputes</a>
+                        </div>
+                    }
+                </div>
+                </div>
+            </div>
+    </div>
+    <div class="card-wrapper">
+        <div class="card">
+            <div class="card-header">
+                <center>
+                    <h4>Job Payments</h4>
+                </center>
+            </div>
+            <div class="card-body">
+
+                @foreach (var payment in JobPayments)
+                {
+                    <div class="container-fluid">
+                        <h5>@payment.PaymentTitle - @payment.TransferAmount @payment.Currency.GetName()</h5>
+                        <br />
+                        <h5>Status: @(payment.Released ? "Release" : "On hold")</h5>
+                        @if (payment.EmployerId == Session.User.Id && !payment.Released)
+                        {
+                    <div class="container-fluid">
+                        <div class="btn-group" role="group" aria-label="Basic example">
+                            <button disabled="@(Releasing && ReleaseId == payment.Id)" @onclick="@(async ()=>
+                                                                                                       {
+                                                                                                           Releasing = true;
+                                                                                                           ReleaseId = payment.Id;
+                                                                                                           await InvokeAsync(StateHasChanged);
+
+                                                                                                           using var resp = await Ez.GetHttpPostResponse($"job/release", new Dictionary<string, string>
+                                                                                                            {
+                                                                                                                {"jobId", Job.Id },
+                                                                                                                {"paymentId", payment.Id }
+                                                                                                            });
+                                                                                                           if (resp.IsSuccessStatusCode)
+                                                                                                           {
+                                                                                                               var pmt = (await resp.Content.ReadAsStringAsync()).FromJson<SharedLib.Models.JobPayment>();
+                                                                                                               JobPayments.RemoveAll(x=>x.Id==pmt.Id);
+                                                                                                               JobPayments.Add(pmt);
+                                                                                                               //await InvokeAsync(StateHasChanged);
+                                                                                                           }
+                                                                                                           else
+                                                                                                           {
+                                                                                                               ToastService.ShowToast(await resp.Content.ReadAsStringAsync(), ToastLevel.Error);
+                                                                                                           }
+
+                                                                                                           ReleaseId = string.Empty;
+                                                                                                           Releasing = false;
+                                                                                                           await InvokeAsync(StateHasChanged);
+                                                                                                       })" class="btn btn-success">
+                                Release payment
+                            </button>
+                            <button disabled="@Releasing" class="btn btn-danger" @onclick="@(async ()=>
+                                                                                     {
+                                                                                         Releasing = true;
+                                                                                         await InvokeAsync(StateHasChanged);
+
+                                                                                         using var resp = await Ez.GetHttpPostResponse($"job/cancelpayment", new Dictionary<string, string>
+                                                                                                            {
+                                                                                                                {"jobId", Job.Id },
+                                                                                                                {"paymentId", payment.Id }
+                                                                                                            });
+                                                                                         if (resp.IsSuccessStatusCode)
+                                                                                         {
+                                                                                             JobPayments.RemoveAll(x => x.Id == payment.Id);
+                                                                                         }
+
+                                                                                         Releasing = false;
+                                                                                         await InvokeAsync(StateHasChanged);
+                                                                                     })">
+                                Cancel payment
+                            </button>
+                            </div>
+
+                        </div>
+                        }
+                    </div>
+                    <hr />
+                }
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    bool ConfirmComplete = false;
+    bool ConfirmContest = false;
+    //List<(string, bool)> Active = new List<(string, bool)>();
+
+    bool Releasing = false;
+    string ReleaseId = string.Empty;
+
+    [Parameter] public string Id { get; set; }
+    Job Job = new Job();
+    ProfileReview Review = null;
+    List<SharedLib.Models.JobPayment> JobPayments = new List<SharedLib.Models.JobPayment>();
+
+    bool Loading = true;
+    bool AddPayment = false;
+
+    async Task ChangeStatus(JobStatus status)
+    {
+        Loading = true;
+        await InvokeAsync(StateHasChanged);
+
+        using var resp = await Ez.GetHttpPostResponse($"job/update", new Dictionary<string, string>
+        {
+            {"id", Id },
+            {"status", status.ToString() }
+        });
+        if (resp.IsSuccessStatusCode)
+        {
+            using var resp2 = await Ez.GetHttpPostResponse($"job/mine", new Dictionary<string, string>
+            {
+                {"id", Id }
+            });
+            if (resp2.IsSuccessStatusCode) Job = (await resp2.Content.ReadAsStringAsync()).FromJson<Job>();
+        }
+
+
+
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+            cnt++;
+            if (cnt > 6)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+        }
+
+        try
+        {
+            using var rev = await Ez.GetHttpPostResponse($"reviews/get/job/{Id}");
+            using var pmtr = await Ez.GetHttpPostResponse($"job/payments");
+            using var resp = await Ez.GetHttpPostResponse($"job/mine", new Dictionary<string, string>
+            {
+                {"id", Id }
+            });
+
+            if (resp.IsSuccessStatusCode) Job = (await resp.Content.ReadAsStringAsync()).FromJson<Job>();
+            else NavMan.NavigateTo("/notfound");
+            if (pmtr.IsSuccessStatusCode) JobPayments = (await pmtr.Content.ReadAsStringAsync()).FromJson<List<SharedLib.Models.JobPayment>>().FindAll(x => x.JobId == Job.Id);
+            if (rev.IsSuccessStatusCode) Review = (await rev.Content.ReadAsStringAsync()).FromJson<ProfileReview>();
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine(e);
+        }
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

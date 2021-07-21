@@ -1,0 +1,176 @@
+﻿
+@page "/account"
+
+@if (Loading)
+{
+    <Loader/>
+}
+else
+{
+    <div class="d-flex flex-column flex-md-row justify-content-start align-items-stretch">
+        <div class="">
+            <div class="account-wrapper">
+                <h1 class="top-header">Account info</h1>
+                <div class="white-bg">
+                    <div class="">
+                        <div class="username">
+                            Username
+                        </div>
+                        <div class="name">
+                            <span>Email: @Session.User.Email</span><br />
+                            <span>Phone: @Session.User.Phone</span><br />
+                            @*<span>Backup Email: test@test.com</span>*@@*<br />*@
+                            <span>Verified: Yes</span><br />
+                            <span>Country: @Session.User.Country</span>
+                            <button @onclick="@(async()=>
+                                                {
+                                                    (await Ez.GetHttpPostResponse($"account/set2fa/{!Session.User.TwoFactorAuth}")).Dispose();
+                                                    await Workers.GetInfo();
+                                                    await InvokeAsync(StateHasChanged);
+                                                })">SET TWO FACTOR AUTHENTICATION (Current: @(Session.User.TwoFactorAuth))</button>
+                        </div>
+                        <div class="dob">
+                            <span>Account created: @Session.User.DateCreated</span><br />
+                        </div>
+                    </div>
+                    <div>
+                        <NavLink class="btn btn-block btn-info" href="/listmethods">
+                            Payment methods
+                        </NavLink>
+                        <NavLink class="btn btn-block btn-info" href="/profile">
+                            View profile
+                        </NavLink>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class=" ml-md-5">
+            <div class="account-wrapper">
+                <h1 class="top-header">Subscription info</h1>
+                <div class="white-bg">
+                    <div>
+                        Subscription Type: @Session.Subscription.Type<br />
+                        Next renewal type: @Session.Subscription.NextType
+                    </div>
+                    @if (Session.Subscription.Type != SubscriptionType.Free)
+                    {
+                        <div>
+                            Valid unti: @Session.Subscription.ValidUntil.ToString("s")
+                        </div>
+                        <div>
+                            Currency: @Session.Subscription.Currency
+                        </div>
+                        <div>
+                            <a href="/subscription" class="btn btn-success">Change plan</a>
+                            <a href="/subscription/manage" class="btn btn-success">Change payment method</a>
+                            @if (CancelSub)
+                            {
+                                <button @onclick="@(async () =>
+                                                    {
+                                                        Loading = true;
+                                                        await InvokeAsync(StateHasChanged);
+
+                                                        using var resp = await Ez.GetHttpPostResponse($"subs/subscribe", new Dictionary<string, string>
+                                                        {
+                                                            {"type", SubscriptionType.Free.GetName() }
+                                                        });
+                                                        if (resp.IsSuccessStatusCode)
+                                                        {
+                                                            await Workers.GetInfo();
+                                                            ToastService.ShowToast($"Subscribtions has been cancelled", ToastLevel.Info);
+                                                        }
+                                                        else
+                                                        {
+                                                            ToastService.ShowToast($"There was an error", ToastLevel.Error);
+                                                        }
+
+                                                        Loading = false;
+                                                        await InvokeAsync(StateHasChanged);
+                                                    })" class="btn btn-outline-danger">
+                                    Confirm
+                                </button>
+                                <button @onclick="() => CancelSub = false" class="btn btn-outline-success">Don't cancel</button>
+                            }
+                            else if (Session.Subscription.Renew)
+                            {
+                                <button @onclick="() => CancelSub = true" class="btn btn-outline-danger">Cancel subscription</button>
+                            }
+                            else if (!Session.Subscription.Renew && Session.Subscription.ValidUntil > DateTime.UtcNow)
+                            {
+                                <button @onclick="@(()=>NavMan.NavigateTo("/subscription"))" class="btn btn-outline-danger">Manage Subscription</button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div>
+                            <a href="/subscription" class="btn btn-info">Upgrade</a>
+                        </div>
+                    }
+                    <div>
+                        Subscription limits:<br />
+                        <ul>
+                            <li>
+                                <b>Max active job posts:</b> @Session.Subscription.Limits.JobPostLimit,
+                            </li>
+                            <li>
+                                <b>Max active job search posts:</b> @Session.Subscription.Limits.JobSearchPostLimit,
+                            </li>
+                            <li>
+                                <b>Max job applications in the last 7 days:</b> @Session.Subscription.Limits.WeeklyApplyLimit,
+                            </li>
+                            <li>
+                                <b>Max freelancer applications per post:</b> @Session.Subscription.Limits.JobPostApplicationLimit,
+                            </li>
+                            <li>
+                                <b>Max number of applications you can accept per job post:</b> @Session.Subscription.Limits.PerJobPostAcceptLimit,
+                            </li>
+                            <li>
+                                <b>Max number of freelancers you can propose jobs to in the last 7 days:</b> @Session.Subscription.Limits.WeeklyJobSearchProposalsLimit
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    bool CancelSub = false;
+    bool Loading = true;
+
+
+    async Task RestartSub()
+    {
+        Loading = true;
+        await InvokeAsync(StateHasChanged);
+
+        using var resp = await Ez.GetHttpPostResponse($"subs/subscribe", new Dictionary<string, string>
+        {
+            {"type", Session.Subscription.Type.GetName() },
+            {"currency", Session.Subscription.Currency.GetName() },
+            {"methodId", Session.Subscription.PaymentMethodId }
+        });
+        if (resp.IsSuccessStatusCode) NavMan.NavigateTo("/account", true);
+        else ToastService.ShowToast(await resp.Content.ReadAsStringAsync(), ToastLevel.Error);
+
+        CancelSub = false;
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+            cnt++;
+            if (cnt > 5) NavMan.NavigateTo("/login");
+        }
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

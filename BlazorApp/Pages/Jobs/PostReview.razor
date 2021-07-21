@@ -1,0 +1,15 @@
+﻿
+@page "/review/{Id}" 
+
+<h3>PostReview</h3>
+
+@code {
+    [Parameter] public string Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //using var resp = await Ez.GetHttpPostResponse("post/job", );
+
+        await base.OnInitializedAsync();
+    }
+}

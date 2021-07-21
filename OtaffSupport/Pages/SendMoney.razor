@@ -1,0 +1,87 @@
+﻿<center>
+    <form @onsubmit="Initiate">
+        <h3>Send Money</h3>
+        <hr />
+        <label for="amount">Amount</label>
+        <input type="number" name="amount" @bind="Amount"/>
+        <label for="amount2">Confirm amount</label>
+        <input type="number" name="amount2" @bind="Amount"/>
+        <hr />
+        <label for="currency">Currency</label>
+        <select name="currency" @bind="Currency">
+            @foreach (var c in Enum.GetValues<Currency>())
+            {
+                <option value="@c">@c</option>
+            }
+        </select>
+        <hr />
+        <button class="btn btn-info btn-block" type="submit" @onclick="Initiate">Send money</button>
+    </form>
+</center>
+@code {
+    [Parameter] public SupportTicket Ticket { get; set; }
+
+    Currency Currency = Currency.EUR;
+    decimal Amount = 0;
+
+    protected override Task OnInitializedAsync()
+    {
+        return base.OnInitializedAsync();
+    }
+
+    bool Initiated = false;
+    async Task Initiate()
+    {
+        using var s = Db.Client.StartSession();
+        if (Initiated) return;
+        Initiated = true;
+        await InvokeAsync(StateHasChanged);
+
+        var user = Db.UsersCollection.First(x => x.Id == Ticket.UserId);
+        var tr = new WalletTransaction()
+        {
+            Currency = Currency,
+            DateInitiated = DateTime.UtcNow,
+            UserId = Ticket.UserId,
+            ReceiverId = Ticket.UserId,
+            Priority = 2,
+            ReceiverWalletId = (await WalletCtl.GetUserWallet(Ticket.UserId, Currency)).Id,
+            Status = TransactionStatus.Waiting,
+            ReceiverUsername = user.Username,
+            Amount = Amount,
+            Type = TransactionType.Recharge,
+            TransactionFeeP = 0,
+            SenderUsername = "PLATFORM",
+            SenderWalletId = "PLATFORM",
+        };
+        s.StartTransaction();
+
+        Db.WalletTransactionsCollection.InsertOne(s, tr);
+        Db.NotificationsCollections.InsertOne(s, new Notification
+        {
+            Title = "A refund has been initiated",
+            Description = $"A refund of {tr.Amount} {tr.Currency} is being sent to your account",
+            UserId = Ticket.UserId,
+            Date = DateTime.UtcNow,
+            Href = "/wallet/transactions"
+        });
+
+        Db.StaffActions.InsertOne(s, new StaffAction
+        {
+            Data = new Dictionary<string, dynamic>
+            {
+                {"action", TicketActions.Action.SendMoney },
+                {"money", tr.Amount },
+                {"currency", tr.Currency }
+            },
+            Date = DateTime.UtcNow,
+            StaffId = Ticket.StaffId,
+        });
+
+        s.CommitTransaction();
+
+        Initiated = false;
+        await InvokeAsync(StateHasChanged);
+    }
+}
+ 

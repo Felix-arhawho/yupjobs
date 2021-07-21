@@ -1,0 +1,29 @@
+﻿<div class="notification" @onclick="()=>NavMan.NavigateTo(Notif.Href)">
+    <div class="notification-title">
+        @if (Notif.Clicked)
+        {
+            @Notif.Title
+        }
+        else
+        {
+            <b>@Notif.Title</b>
+        }
+    </div>
+    <div class="notification-content">
+        @if (Notif.Seen)
+        {
+            @Notif.Description
+        }
+        else
+        {
+            <b>@Notif.Description</b>
+        }
+    </div>
+    <div class="notification-date">
+        @Notif.Date.ToString("s")
+    </div>
+</div>
+
+@code{
+    [Parameter] public SharedLib.Models.Notification Notif { get; set; }
+}

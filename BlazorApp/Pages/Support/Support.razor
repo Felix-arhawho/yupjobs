@@ -1,0 +1,247 @@
+﻿@using SharedLib.Models
+@page "/support/{Page}"
+@page "/support"
+
+@{
+        if (Page != null)
+            switch (Page)
+            {
+                case "one": ToggleFirstLink(); break;
+                case "two": ToggleSecondLink(); break;
+                case "three": ToggleThirdLink(); break;
+                case "four": ToggleFourthLink(); break;
+            }
+}
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+
+    <h1 class="top-header">Support</h1>
+    <div class="nav nav-tabs">
+        <div class="nav-item">
+            <a class="nav-link @FirstLink" @onclick="ToggleFirstLink">Contact us</a>
+        </div>
+        <div class="nav-item">
+            <a class="nav-link @SecondLink" @onclick="ToggleSecondLink">Quick help</a>
+        </div>
+        <div class="nav-item">
+            <a class="nav-link @ThirdLink" @onclick="ToggleThirdLink">Terms of use</a>
+        </div>
+        <div class="nav-item">
+            <a class="nav-link @FourthLink" @onclick="ToggleFourthLink">Support tickets</a>
+        </div>
+    </div>
+    <div class="tab-content">
+        <div id="home" class="tab-pane fade @FirstLink @FirstLinkPane">
+            <div class="white-bg">
+                <h1>Contact us</h1>
+                <div class="d-flex flex-wrap">
+                    <div class="contact-info">
+                        <p><!--Email: Email@email.com<br />-->@*Phone: +00 000 000 00*@</p>
+                    </div>
+                    <div class="contact-form ml-0 ml-md-5">
+                        <form>
+                            <div class="form-group">
+                                @*<label for="email">Email</label>
+                                    <input type="email" class="form-control" id="email" aria-describedby="emailHelp" placeholder="Enter email">*@
+                            </div>
+                            <div class="form-group">
+                                <label for="message">Your message</label>
+                                <textarea class="form-control" id="message" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-info">Send</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div id="menu1" class="tab-pane fade @SecondLink @SecondLinkPane">
+            <FAQ/>
+        </div>
+        <div id="menu2" class="tab-pane fade  @ThirdLink @ThirdLinkPane">
+            <div class="white-bg">
+                <h1>Terms of use</h1>
+                <p>
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent fermentum eu sem id fermentum. Sed fermentum mauris non quam rhoncus vestibulum. Cras in ex nec felis ultrices dignissim. Cras gravida tempus leo. Suspendisse gravida in nulla eu consectetur. Integer quis nisi enim. Nunc id tellus venenatis, feugiat velit id, aliquam nisi. Sed vitae ipsum mollis, eleifend libero id, tincidunt lacus. In interdum ligula ut rhoncus dictum. Mauris consequat arcu velit, vel ultricies augue aliquet pharetra. Etiam egestas, felis quis molestie pellentesque, elit lorem dictum leo, non iaculis ante odio et sem. Pellentesque libero arcu, porta at ipsum vel, viverra viverra arcu. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos.
+                </p>
+                <p>
+                    Proin semper viverra ante, ac rutrum justo dignissim quis. Pellentesque nec luctus velit, et tincidunt libero. Cras vulputate venenatis nunc eget tincidunt. Nunc aliquam sit amet orci sed cursus. Proin mollis velit quis urna ornare, id hendrerit neque laoreet. Fusce non consectetur ante. Pellentesque sit amet accumsan ex, ut hendrerit augue.
+                </p>
+                <p>
+                    Curabitur pellentesque, dui eget luctus aliquet, magna lectus lobortis odio, vel molestie elit tellus nec elit. Aenean id risus nisl. Sed vel felis mi. Aenean mattis sagittis scelerisque. Quisque ut finibus enim. Donec nec risus ut ligula dignissim imperdiet. Donec nec magna id nulla porttitor tincidunt sed in urna.
+                </p>
+                <p>
+                    Vivamus fermentum augue ac lectus ultrices rhoncus. Suspendisse sed pretium ex. Duis scelerisque fringilla nulla, id ullamcorper libero tempor at. Morbi at justo nibh. Suspendisse luctus rutrum aliquam. Vivamus pellentesque euismod metus, mollis vestibulum nunc faucibus a. Donec pretium commodo libero, quis semper leo pulvinar quis. Nulla euismod non nulla a euismod. Cras eget lacinia odio, id blandit eros. Aenean maximus leo sit amet neque eleifend, nec efficitur ligula fermentum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Ut non diam lacus. Vestibulum diam quam, vulputate porta purus id, luctus venenatis ipsum. In faucibus sollicitudin venenatis.
+                </p>
+                <p>
+                    Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Integer quis semper dui, eu cursus metus. Quisque varius blandit mauris, quis dapibus diam dignissim ac. Proin fermentum pharetra enim quis aliquam. Cras placerat vel lectus eu dictum. Duis tempor pulvinar quam, at ornare diam sodales ac. Fusce tortor odio, tempor malesuada porttitor non, ullamcorper eu risus. Donec accumsan ac dolor nec vehicula. Suspendisse gravida felis nibh, ultricies tristique urna suscipit in. Integer elit risus, tristique vitae tortor vitae, commodo ullamcorper est. Donec semper vestibulum metus vel egestas. Pellentesque ac lacinia tortor. Nam varius eleifend tincidunt. Praesent sapien sem, viverra ultrices leo ut, euismod vestibulum tortor. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae;
+                </p>
+            </div>
+        </div>
+        <div id="menu3" class="tab-pane fade  @FourthLink @FourthLinkPane">
+            <div class="white-bg">
+                <h1>Support tickets</h1>
+                <div class="new_ticket">
+                    <h3>Create new support ticket:</h3>
+                    <form @onsubmit="PostTicket">
+                        <div class="form-group">
+                            <label for="rtitle">Your message</label>
+                            <input class="form-control" id="rtitle" rows="3" @bind="NewTicket.RequestTitle"/>
+                            <label for="message">Your message</label>
+                            <textarea class="form-control" id="message" rows="3" @bind="NewTicket.Message"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-info">Send</button>
+                    </form>
+                    <hr />
+                    <h3>Your support tickets:</h3>
+                    <ul class="list-group fa-padding support-tickets-list">
+                        @foreach (var t in Session.SupportTickets)
+                        {
+                            <li class="list-group-item" @onclick="@(()=>NavMan.NavigateTo("/support/ticket/" + t.Id))">
+                                <div class="media">
+                                    <div class="media-body">
+                                        <strong>@t.RequestTitle</strong><span class="number float-right"># @t.Id</span>
+                                        <p class="info">Date: @t.DateSent.ToShortDateString() | @Session.TicketMessages.Count(x=>x.TicketId==t.Id) comments</p>
+                                    </div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string FirstLink = "active";
+    private string FirstLinkPane = "show";
+
+    private string SecondLink = "";
+    private string SecondLinkPane = "";
+
+    private string ThirdLink = "";
+    private string ThirdLinkPane = "";
+
+    private string FourthLink = "";
+    private string FourthLinkPane = "";
+
+    [Parameter] public string Page { get; set; }
+
+    bool Loading = true;
+    SharedLib.Models.SupportTicket NewTicket = new SharedLib.Models.SupportTicket();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+            cnt++;
+            if (cnt > 10)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+        }
+
+        using var resp1 = await Ez.GetHttpPostResponse("support/tickets");
+
+        if (resp1.IsSuccessStatusCode)
+        {
+            var obj = JObject.Parse(await resp1.Content.ReadAsStringAsync());
+            Session.SupportTickets = obj["tickets"].ToObject<List<SharedLib.Models.SupportTicket>>();
+            Session.TicketMessages = obj["messages"].ToObject<List<TicketMessage>>();
+        }
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    async Task PostTicket()
+    {
+        using var resp = await Ez.GetHttpPostResponse("support/newticket", new Dictionary<string, string>
+        {
+            {"jticket", NewTicket.ToJson() }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            NavMan.NavigateTo($"support/ticket/{await resp.Content.ReadAsStringAsync()}");
+        }
+        else { }
+    }
+
+    private void ToggleFirstLink()
+    {
+        Page = "one";
+        FirstLink = "active";
+        FirstLinkPane = "show";
+
+        SecondLink = "";
+        SecondLinkPane = "";
+
+        ThirdLink = "";
+        ThirdLinkPane = "";
+
+        FourthLink = "";
+        FourthLinkPane = "";
+    }
+
+    private void ToggleSecondLink()
+    {
+        Page = "two";
+        FirstLink = "";
+        FirstLinkPane = "";
+
+        SecondLink = "active";
+        SecondLinkPane = "show";
+
+        ThirdLink = "";
+        ThirdLinkPane = "";
+
+        FourthLink = "";
+        FourthLinkPane = "";
+    }
+
+    private void ToggleThirdLink()
+    {
+        Page = "three";
+        FirstLink = "";
+        FirstLinkPane = "";
+
+        SecondLink = "";
+        SecondLinkPane = "";
+
+        ThirdLink = "active";
+        ThirdLinkPane = "show";
+
+        FourthLink = "";
+        FourthLinkPane = "";
+    }
+
+
+    private void ToggleFourthLink()
+    {
+        Page = "four";
+        FirstLink = "";
+        FirstLinkPane = "";
+
+        SecondLink = "";
+        SecondLinkPane = "";
+
+        ThirdLink = "";
+        ThirdLinkPane = "";
+
+        FourthLink = "active";
+        FourthLinkPane = "show";
+    }
+
+
+
+}

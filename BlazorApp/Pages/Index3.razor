@@ -1,0 +1,135 @@
+﻿@page "/"
+
+
+<section class="content">
+    <div class="container">
+        <div class="hero--wrapper">
+            <div class="title-lg pt-3">Welcome to YupJobs</div>
+            <div class="subtext">Work freelance and find freelancers whenever needed</div>
+            <div class="content-menus d-flex justify-content-between align-items-center">
+                <a  href="/jobs/new" class="item d-flex align-items-center">
+                    <div class="icon">
+                        <img src="../img/svg/ic_twotone-post-add.svg" alt="post-add">
+                    </div>
+                    <span>Post job offer</span>
+                </a>
+                <a href="/jobs" class="item d-flex align-items-center">
+                    <div class="icon">
+                        <img src="../img/svg/mdi_file-find-outline.svg" alt="find-file">
+                    </div>
+                    <span>Find a job</span>
+                </a>
+                <a href="#" class="item d-flex align-items-center">
+                    <div class="icon">
+                        <img src="../img/svg/bx_bx-share-alt.svg" alt="share-alt">
+                    </div>
+                    <span>Share your profile</span>
+                </a>
+                <a href="#" class="item d-flex align-items-center">
+                    <div class="icon">
+                        <img src="../img/svg/fluent_people-search-24-regular.svg" alt="share-alt">
+                    </div>
+                    <span>Find freelancers</span>
+                </a>
+            </div>
+        </div>
+        <div class="grid grid--1fr my-4">
+            <div class="content--article">
+                <div class="title--header d-flex justify-content-between align-items-center">
+                    <label>Latest job offers</label>
+                    <a href="/jobs">See more</a>
+                </div>
+                @if (Loading)
+                {
+                    <Loader />
+                }
+                else
+                {
+                    @foreach (var post in Session.CurrentJobPosts)
+                    {
+                        <article @onclick="@(() => NavMan.NavigateTo($"/post/hire/{post.Id}"))">
+                            <h3>@post.Title</h3>
+                            <div class="d-flex align-items-center mb-3">
+                                @foreach (var tag in post.Tags)
+                                {
+                                    <span class="tags">@tag</span>
+                                }
+                            </div>
+                            <p>@post.Description</p>
+                            <p class="currency"> @post.ProposedSalary[0] - @post.ProposedSalary[1] @post.Currency</p>
+                            <a href="#" class="more-reads">Read more</a>
+                        </article>
+                    }
+                }
+            </div>
+            <div class="content--article">
+                <div class="title--header d-flex justify-content-between align-items-center">
+                    <label>Latest freelancer profiles -</label>
+                    <a href="/looking-for-jobs">See more</a>
+                </div>
+
+                @if (Loading2)
+                {
+                    <Loader />
+                }
+                else
+                {
+                    foreach (var post in Session.CurrentJobSearchPosts)
+                    {
+                        <article @onclick="@(()=>NavMan.NavigateTo($"/looking-for-jobs/details/{post.Id}"))">
+                            <h3>@post.Title</h3>
+                            <div class="d-flex align-items-center mb-3">
+                                @foreach (var tag in post.Tags)
+                                {
+                                    <span class="tags">@tag</span>
+                                }
+                            </div>
+                            <p>@post.Description</p>
+                            <p class="currency">  @post.RequestedSalary[0] @post.Currency</p>
+                            <a href="#" class="more-reads">Read more</a>
+                        </article>
+
+                    }
+                }
+
+            </div>
+        </div>
+    </div>
+</section>
+
+
+@code {
+    bool Loading = false;
+    bool Loading2 = false;
+
+    public static JobPostFilter SearchFilter = new JobPostFilter();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        SearchFilter.MaxCount = 5;
+        Loading = Session.CurrentJobPosts.Count is 0;
+        Loading2 = Session.CurrentJobSearchPosts.Count is 0;
+        await InvokeAsync(StateHasChanged);
+
+        if (Loading)
+        {
+            using var resp = await Ez.GetHttpPostResponse("post/gethire", null, false);
+            if (resp.IsSuccessStatusCode)
+                Session.CurrentJobPosts = (await resp.Content.ReadAsStringAsync()).FromJson<List<SharedLib.Models.JobPost>>();
+        }
+
+        if (Loading2)
+        {
+            using var resp2 = await Ez.GetHttpPostResponse("post/getsearch", null, false);
+            if (resp2.IsSuccessStatusCode)
+                Session.CurrentJobSearchPosts = (await resp2.Content.ReadAsStringAsync()).FromJson<List<SharedLib.Models.JobSearchPost>>();
+        }
+
+        Loading = false;
+        Loading2 = false;
+        await InvokeAsync(StateHasChanged);
+        await base.OnInitializedAsync();
+    }
+}

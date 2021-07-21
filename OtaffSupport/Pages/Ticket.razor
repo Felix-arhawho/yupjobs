@@ -1,0 +1,73 @@
+﻿@page "/ticket/{Id}"
+
+@if (Loading)
+{
+    <Loader />
+}else if (Actions)
+{
+    <TicketActions Ticket="STicket"/>
+}else if (Info)
+{
+    <UserInfo Id="@STicket.UserId" Reset="()=> { Info = false; Actions = false; Loading = false; }"/>
+}
+else
+{
+<center>
+    <h4>@STicket.RequestTitle</h4>
+    <hr />
+    <div class="container-fluid ticketpool">
+        <p>@STicket.Message</p>
+    </div>
+    <hr />
+    <h4>Messages:</h4>
+    <hr />
+    <div class="messages">
+        @foreach (var msg in Db.TicketMessages.Find(x => x.TicketId == Id).ToList())
+        {
+            <div class="message @(msg.IsStaff ? "me" : "user")">
+                <p class="name">@(msg.IsStaff ? "Me" : "User: " + msg.UserId)</p>
+                <hr />
+                <p>@msg.Message</p>
+            </div>
+        }
+    </div>
+    <h4>Respond:</h4>
+    <div class="respond">
+        <textarea placeholder="Message" @bind="Message"></textarea>
+        <button class="btn btn-success" @onclick="@(()=>
+                        {
+                            Db.TicketMessages.InsertOne(new TicketMessage { Message = Message, Date = DateTime.UtcNow, IsStaff = true, TicketId = Id, UserId = User.Id });
+                            StateHasChanged();
+                        })">
+            Add Message
+        </button>
+    </div>
+    <hr />
+    <button class="btn btn-info btn-block" @onclick="()=>Actions = true">Ticket actions</button>
+    <button class="btn btn-info btn-block" @onclick="()=>Info = true">User information</button>
+</center>
+    <hr />
+
+}
+
+
+@code {
+    [Parameter] public string Id { get; set; }
+
+    SupportTicket STicket = new SupportTicket();
+    bool Loading = true;
+    bool Actions = false;
+    bool Info = false;
+
+    string Message = string.Empty;
+    StaffUser User = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        STicket = Db.SupportTickets.Find(x => x.Id == Id).First();
+        User = await StorageService.GetItemAsync<StaffUser>("user");
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

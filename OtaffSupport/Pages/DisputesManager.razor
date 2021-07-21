@@ -1,0 +1,22 @@
+﻿<h3>Stripe Disputes Manager</h3>
+
+<input placeholder="Stripe customer id" @bind="StripeCustomerId"/>
+<button @onclick="@(()=>
+                    {
+                        User = Db.UsersCollection.First(x => x.StripeCustomerId == StripeCustomerId);
+                        if (User is null)
+                            StripeCustomerId = "User not found";                        
+                    })">Search for customer</button>
+
+@if (User != null)
+            {
+                <div class="container-fluid">
+                    <h4>@JsonConvert.SerializeObject(User, Formatting.Indented)</h4>
+                </div>
+                <UserInfo Id="@User.Id"></UserInfo>
+            }
+
+@code {
+    User User = null;
+    string StripeCustomerId = string.Empty;
+}

@@ -1,0 +1,109 @@
+﻿@page "/job/rate/{Id}"
+@using SharedLib.Models
+
+<h1 class="top-header">Rate job</h1>
+<div class="card rate-job">
+    <div class="card-body">
+        <h3>How would you rate this job?</h3>
+        <textarea class="form-control" placeholder="Please enter your opinion (Optional)" @bind="Review.ReviewContent"></textarea>
+        <hr />
+        <div class="clearfix">
+            <fieldset class="rating">
+                <input type="radio" @onselect="()=>Review.Rating=ReviewRating.Perfect" id="star5" name="rating" value="5" /><label class="full" for="star5" title="Awesome - 5 stars"></label>
+                <input type="radio" @onselect="()=>Review.Rating=ReviewRating.Satisfied" id="star4" name="rating" value="4" /><label class="full" for="star4" title="Pretty good - 4 stars"></label>
+                <input type="radio" @onselect="()=>Review.Rating=ReviewRating.Unsatisfied" id="star3" name="rating" value="3" /><label class="full" for="star3" title="Meh - 3 stars"></label>
+                <input type="radio" @onselect="()=>Review.Rating=ReviewRating.Bad" id="star2" name="rating" value="2" /><label class="full" for="star2" title="Kinda bad - 2 stars"></label>
+                <input type="radio" @onselect="()=>Review.Rating=ReviewRating.Horrible" id="star1" name="rating" value="1" /><label class="full" for="star1" title="Sucks big time - 1 star"></label>
+            </fieldset>
+        </div>
+        <hr />
+        <button class="btn btn-success" disabled="@Doing" @onclick="PostReview">Rate</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; }
+    bool Loading = true;
+    Job Job = new Job();
+    bool IsEmployer = false;
+
+    bool Doing = false;
+    async Task PostReview()
+    {
+        Doing = true;
+        await InvokeAsync(StateHasChanged);
+
+        Review.TargetProfileId = Session.User.Id == Job.EmployerId ? Job.EmployeeId : Job.EmployerId;
+        Review.Type = Session.User.Id == Job.EmployerId ? ReviewType.Employee : ReviewType.Employer;
+        using var presp = await Ez.GetHttpPostResponse($"account/profile/user/{Review.TargetProfileId}");
+        if (presp.IsSuccessStatusCode)
+        {
+            Review.TargetProfileId = (await presp.Content.ReadAsStringAsync()).FromJson<Profile>().Id;
+        }
+
+        using var resp = await Ez.GetHttpPostResponse($"reviews/post", new Dictionary<string, string>
+        {
+            {"jreview", Review.ToJson() },
+            {"jobId", Job.Id },
+            {"profileId", Review.TargetProfileId },
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            NavMan.NavigateTo("/");
+            ToastService.ShowToast("Review posted", ToastLevel.Success);
+        }
+        else ToastService.ShowToast("An error has occured, try again later", ToastLevel.Error);
+
+
+        Doing = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cnt = 0;
+        while (!Session.GotInfo && Session.LoggedIn)
+        {
+            cnt++;
+            await Task.Delay(1000);
+            if (cnt > 6)
+            {
+                NavMan.NavigateTo("/login");
+                return;
+            }
+        }
+
+        using var resp = await Ez.GetHttpPostResponse($"job/mine", new Dictionary<string, string>
+        {
+            {"id", Id }
+        });
+        if (resp.IsSuccessStatusCode)
+            Job = (await resp.Content.ReadAsStringAsync()).FromJson<Job>();
+        else
+        {
+            NavMan.NavigateTo("/login");
+            return;
+        }
+        if (Job.Status != JobStatus.Completed)
+            NavMan.NavigateTo($"/job/ongoing/{Id}");
+
+        IsEmployer = Job.EmployerId == Session.User.Id;
+
+        Review.TargetProfileId = (await GetProfile(IsEmployer ? Job.EmployeeId : Job.EmployerId)).Id;
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    async Task<Profile> GetProfile(string userId)
+    {
+        using var resp = await Ez.GetHttpPostResponse($"account/profile/user/{userId}");
+        if (resp.IsSuccessStatusCode) return (await resp.Content.ReadAsStringAsync()).FromJson<Profile>();
+        return null;
+    }
+
+
+    ProfileReview Review = new ProfileReview();
+}

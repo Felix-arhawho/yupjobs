@@ -1,0 +1,325 @@
+﻿@using SharedLib.Models;
+@page "/subscription"
+
+@if (NewMethod)
+{
+    <BlazorApp.Pages.Payment.AddPaymentMethod ResetAction="async () => { await Session.RefreshPaymentMethods(); NewMethod = false; StateHasChanged(); }"/>
+}
+else
+{
+    <h1 class="top-header">Subscription</h1>
+
+    <div class="stages">
+        <div class="checkout-stage">
+            <span>Page: @CheckoutStage / 3</span>
+        </div>
+        @if (CheckoutStage is 1)
+        {
+            <div class="subscriptions">
+                <div class="card-deck mb-3 text-center">
+                    <div class="card mb-4 box-shadow">
+                        <div class="card-header">
+                            <h4 class="my-0 font-weight-normal">Free</h4>
+                        </div>
+                        <div class="card-body">
+                            <h1 class="card-title pricing-card-title">@Currency 0 <small class="text-muted">/ mo</small></h1>
+                            <ul class="list-unstyled mt-3 mb-4">
+                                <li>active job posts - 2</li>
+                                <li>job post applications limit - 8</li>
+                                <li>candidates that you can accept - 1</li>
+                                <li>searches you can propose to - 4</li>
+                            </ul>
+                            <button type="button" disabled="@(Session.Subscription?.Type is SubscriptionType.Free)" @onclick="@(async (e) =>
+                                                                                                                                {
+                                                                                                                                    if (Session.Subscription.Type != SubscriptionType.Free)
+                                                                                                                                    {
+                                                                                                                                        using var resp =
+                                                                                                                                           await Ez.GetHttpPostResponse($"subs/subscribe", new Dictionary<string, string>
+                                                                                                                                           {
+                                                                                                                                               {"type", SubscriptionType.Free.GetName() }
+                                                                                                                                           });
+                                                                                                                                        if (resp.IsSuccessStatusCode)
+                                                                                                                                        {
+                                                                                                                                            NavMan.NavigateTo("/account");
+                                                                                                                                            ToastService.ShowToast("Subscription cancelled", ToastLevel.Success);
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                    SubType = SubscriptionType.Free;
+                                                                                                                                    //CheckoutStage = 2;
+                                                                                                                                })" class="btn btn-lg btn-block btn-primary">
+                                @(Session.Subscription?.Type is SubscriptionType.Free ? "Current plan" : "Cancel subscription")
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 box-shadow">
+                        <div class="card-header">
+                            <h4 class="my-0 font-weight-normal">Personal</h4>
+                        </div>
+                        <div class="card-body">
+                            <h1 class="card-title pricing-card-title">@Currency @FeesCtl.GetConvertedRate(SubscriptionsMeta.SubscriptionCosts[SubscriptionType.Personal], Currency) <small class="text-muted">/ mo</small></h1>
+                            <ul class="list-unstyled mt-3 mb-4">
+                                <li>active job posts - 2</li>
+                                <li>job post applications limit - 8</li>
+                                <li>candidates that you can accept - 1</li>
+                                <li>searches you can propose to - 4</li>
+                            </ul>
+                            <hr />
+                            <select @bind="Currency">
+                                @foreach (var c in Enum.GetNames(typeof(Currency)))
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                            <hr />
+                            <button type="button" disabled="@(Session.Subscription?.Type is SubscriptionType.Personal)" @onclick="e =>
+                                                                                                                                 {
+                                                                                                                                     SubType = SubscriptionType.Personal;
+                                                                                                                                     CheckoutStage = 2;
+                                                                                                                                 }" class="btn btn-lg btn-block btn-primary">
+                                @(Session.Subscription?.Type is SubscriptionType.Personal ? "Current plan" : "Change Plan")
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 box-shadow">
+                        <div class="card-header">
+                            <h4 class="my-0 font-weight-normal">Pro</h4>
+                        </div>
+                        <div class="card-body">
+                            <h1 class="card-title pricing-card-title">@Currency @FeesCtl.GetConvertedRate(SubscriptionsMeta.SubscriptionCosts[SubscriptionType.Pro], Currency)<small class="text-muted">/ mo</small></h1>
+                            <ul class="list-unstyled mt-3 mb-4">
+                                <li>active job posts - 2</li>
+                                <li>job post applications limit - 8</li>
+                                <li>candidates that you can accept - 1</li>
+                                <li>searches you can propose to - 4</li>
+                            </ul>
+
+                            <hr />
+                            <select @bind="Currency">
+                                @foreach (var c in Enum.GetNames(typeof(Currency)))
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                            <hr />
+                            <button type="button" disabled="@(Session.Subscription?.Type is SubscriptionType.Pro)" @onclick="e =>
+                                                                                                                            {
+                                                                                                                                SubType = SubscriptionType.Pro;
+                                                                                                                                CheckoutStage = 2;
+                                                                                                                            }" class="btn btn-lg btn-block btn-primary">
+                                @(Session.Subscription?.Type is SubscriptionType.Pro ? "Current plan" : "Change Plan")
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 box-shadow">
+                        <div class="card-header">
+                            <h4 class="my-0 font-weight-normal">Business</h4>
+                        </div>
+                        <div class="card-body">
+                            <h1 class="card-title pricing-card-title">@Currency @FeesCtl.GetConvertedRate(SubscriptionsMeta.SubscriptionCosts[SubscriptionType.Business], Currency) <small class="text-muted">/ mo</small></h1>
+                            <ul class="list-unstyled mt-3 mb-4">
+                                <li>active job posts - 2</li>
+                                <li>job post applications limit - 8</li>
+                                <li>candidates that you can accept - 1</li>
+                                <li>searches you can propose to - 4</li>
+                            </ul>
+                            <hr />
+                            <select @bind="Currency">
+                                @foreach (var c in Enum.GetNames(typeof(Currency)))
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                            <hr />
+                            <button type="button" disabled="@(Session.Subscription.Type is SubscriptionType.Business)" @onclick="e =>
+                                                                                                                                 {
+                                                                                                                                     SubType = SubscriptionType.Business;
+                                                                                                                                     CheckoutStage = 2;
+                                                                                                                                 }" class="btn btn-lg btn-block btn-primary">
+                                @(Session.Subscription?.Type is SubscriptionType.Business ? "Current plan" : "Change Plan")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        }
+        else if (CheckoutStage is 2)
+        {
+            <div class="white-bg">
+                <div>
+                    <h3>Subscribe to @SubType plan?</h3>
+                    <p>Total cost: @Currency @FeesCtl.GetConvertedRate(SubscriptionsMeta.SubscriptionCosts[SubType], Currency) / 30 days</p>
+                </div>
+                <div class="btn-group">
+                    <button @onclick="e => CheckoutStage = 1" class="btn btn-danger mr-5" disabled="@Submitting">Cancel</button>
+                    <button class="btn btn-success" @onclick="()=> { Prepaid = false; CheckoutStage = 3; }" disabled="@Submitting">Subscribe</button>
+                </div>
+                <h4>OR</h4>
+                <div>
+                    <h3>Buy prepaid subscription of @SubType</h3>
+                    <div>
+                        <input @bind="Months" type="number" /><h4>Months</h4>
+                    </div>
+                    <p>Total cost: @Currency @FeesCtl.GetConvertedRate(Ez.CalculateSubDiscount(SubType, Months).Item3, Currency) one time payment</p>
+                </div>
+                <div class="btn-group">
+                    <button @onclick="e => CheckoutStage = 1" class="btn btn-danger mr-5" disabled="@Submitting">Cancel</button>
+                    <button class="btn btn-success" @onclick="() => {Prepaid = true; CheckoutStage = 3; }" disabled="@Submitting">Buy</button>
+                </div>
+
+            </div>
+        }
+        else if (CheckoutStage is 3)
+        {
+            <div class="white-bg">
+                <center>
+                    <label>Select payment method</label>
+                    <div id="payment-method-list">
+                        @foreach (var method in Session.UserPaymentMethods)
+                        {
+                            if (!Prepaid && !(new[] { MethodType.CreditCard, MethodType.SepaDirect, MethodType.BecsDirect }.Contains(method.Type)))
+                                continue;
+                            <div @onclick="() => SelectedMethod = method">
+                                <BlazorApp.Pages.Payment.PaymentMethod Method="method" Selected="SelectedMethod.Id == method.Id" />
+                            </div>
+                        }
+                    </div>
+                    <button class="btn btn-info" id="add-another-payment" @onclick="() => NewMethod = true">Add payment method</button>
+                </center>
+                <label for="smbt">If you pay in another currency than EUR, the price of the subscription may fluctuate depending on the exchange rates</label>
+                <button 
+                        name="smbt" 
+                        class="btn btn-success btn-block"
+                        @onclick="Submit" 
+                        disabled="@Submitting">Pay/Subscribe
+                </button>
+                <button @onclick="()=>CheckoutStage=1">
+                    Cancel
+                </button>
+            </div>
+        }
+    </div>
+
+}
+
+@code {
+    bool Prepaid = false;
+    string Total = string.Empty;
+
+    async Task Submit()
+    {
+        if (!Session.GotInfo)
+        {
+            NavMan.NavigateTo("/login");
+            return;
+        }
+
+        CheckoutStage = 1;
+        if (Prepaid) await BuyMonths(); else await Subscribe();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.LoggedIn)
+        {
+            NavMan.NavigateTo("/");
+            return;
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    async Task BuyMonths()
+    {
+        Submitting = true;
+        await InvokeAsync(StateHasChanged);
+        using var resp = await Ez.GetHttpPostResponse("subs/buymonths", new Dictionary<string, string>
+        {
+            {"type", SubType.GetName() },
+            {"methodId", SelectedMethod.Id },
+            {"months", Months.ToString() },
+            {"currency", ((int)Currency).ToString() }
+        });
+        if (resp.IsSuccessStatusCode) ParseResponse(JObject.Parse(await resp.Content.ReadAsStringAsync()));
+        else error = await resp.Content.ReadAsStringAsync();
+
+        Submitting = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    string error = string.Empty;
+    async Task Subscribe()
+    {
+        Submitting = true;
+        await InvokeAsync(StateHasChanged);
+        using var resp = await Ez.GetHttpPostResponse("subs/subscribe", new Dictionary<string, string>
+        {
+            {"type", SubType.GetName() },
+            {"currency", Currency.GetName() },
+            {"methodId", SelectedMethod.Id }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            var content = await resp.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                NavMan.NavigateTo($"/account");
+                ToastService.ShowToast("Subscription plan updated", ToastLevel.Success);
+            }
+            else ParseResponse(JObject.Parse(content));
+        }
+        else error = await resp.Content.ReadAsStringAsync();
+
+        Submitting = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async void ParseResponse(JObject obj)
+    {
+        var bill = obj["bill"].ToObject<UserBill>();
+        if (obj.Value<bool>("redirect"))
+        {
+            Debug.WriteLine("Redirect");
+            var url = obj.Value<string>("url");
+            NavMan.NavigateTo(url);
+        }
+        else if (obj.Value<bool>("paid"))
+        {
+            Debug.WriteLine("Paid");
+            NavMan.NavigateTo($"/success/pay/{bill.Id}");
+        }
+        else if (obj.Value<bool>("processing"))
+        {
+            NavMan.NavigateTo($"/success/pay/{bill.Id}");
+        }
+        else if (obj.Value<bool>("newtab"))
+        {
+            Debug.WriteLine("NewTab");
+            var url = obj.Value<string>("url");
+            await JsRuntime.InvokeVoidAsync("open", url, "_blank"/*, "location=yes,height=570,width=520,scrollbars=yes,status=yes"*/);
+            ToastService.ShowToast("Pay the invoice and the funds will appear shorty", ToastLevel.Info);
+        }
+        else
+        {
+            ToastService.ShowToast("There was a error processing your payment", ToastLevel.Error);
+            //error = obj["error"].Value<string>();
+        }
+
+        //resp.Dispose();
+    }
+
+
+    bool Submitting = false;
+
+    bool NewMethod = false;
+    static int CheckoutStage = 1;
+    short Months = 3;
+
+    Currency Currency = Session.GotInfo ? Session.User.DefaultCurrency : Currency.EUR;
+    static SubscriptionType SubType = SubscriptionType.Free;
+    UserPaymentMethod SelectedMethod = Session.UserPaymentMethods.First() ?? new UserPaymentMethod();
+}

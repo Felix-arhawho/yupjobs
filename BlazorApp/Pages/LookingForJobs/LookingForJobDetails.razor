@@ -1,0 +1,219 @@
+﻿@page "/looking-for-jobs/details/{Id}"
+
+@if (Loading)
+{
+    <Loader />
+}else if (Report)
+{
+    <BlazorApp.Pages.Support.Report Reset="()=> { Report = false; StateHasChanged(); }" TargetId="@Post.Id" Type="ReportType.JobSearchPost"/>
+}else if (Hire)
+{
+    <BlazorApp.Pages.Jobs.JobHire IsSearch="true" Post="@(new JobPost { Title = "Job "+Guid.NewGuid(), UserId = Session.User.Id, Username = Session.User.Username})" Application="@(new JobApply { ProfileId = Post.ProfileId, UserId = Post.UserId, Username = Post.Username})" ResetAction="()=> { Hire = false; StateHasChanged(); }"/>
+}
+else
+{
+    //Debug.WriteLine(Post.ToJson());
+    <div class="job-listing white-bg True">
+
+        <div class="top">
+            <span class="date">Added: @Post.PostDate</span>
+            <h3>
+                @Post.Title - <i>
+                    Posted by <a style="color: #ff8503" @onclick="@(async () =>
+                                             {
+                                                 using var resp = await Ez.GetHttpPostResponse("account/profile/user/" + Post.UserId, null, false);
+                                                 if (resp.IsSuccessStatusCode)
+                                                 {
+                                                     var profile = (await resp.Content.ReadAsStringAsync()).FromJson<Profile>();
+                                                     NavMan.NavigateTo("/profile/" + profile.Id);
+                                                 }
+                                             })">@Post.Username</a>
+                                        </i>
+                                    </h3>
+                                    <div class="categories">
+                                        <span>@Post.Views Views - </span>
+                                        @foreach (var cat in Post.Categories)
+                                        {
+                                            <span>@cat,</span>
+                                        }
+                                    </div>
+                                    <p>
+                                        @Post.Description
+                                    </p>
+                                    @if (Post.Experience.Count > 0)
+                                    {
+                                        <div class="container-fluid">
+                                            <label>@Post.Country</label>
+                                            <ul>
+                                                @foreach (var i in Post.Experience)
+                                                {
+                                                    <li>@i.Item1: @i.Item2 year(s)</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(Post.Country))
+                {
+                    <div class="container-fluid">
+                        <h4>Country: @Post.Country</h4>
+                    </div>
+                }
+                                </div>
+                                <div class="bottom">
+                                    @*<div class="salary">
+                                        @Post.RequestedSalary[0] @Post.Currency
+                                    </div>*@
+                                    <div class="tags">
+                                        @foreach (var tag in Post.Tags)
+                                        {
+                                            <span class="tag">@tag</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="options">
+                                    @if (Post.UserId != Session.User?.Id && Proposals.Count(x => x.UserId == Session.User?.Id) < 1)
+                                    {
+                                        <div class="container-fluid mt-5">
+                                            <button @onclick="@(() => { if (!Session.LoggedIn) NavMan.NavigateTo("/login"); Proposal = true; })" class="btn btn-info btn-block">Send proposal</button>
+                                            <button @onclick="@(() => { if (!Session.LoggedIn) NavMan.NavigateTo("/login"); Hire = true; })" class="btn btn-info btn-block">Hire freelancer</button>
+                                        </div>
+                                        <a @onclick="() => Report = true">Report this post</a>
+                                    }
+                                    else
+                                    {
+                                        <div class="btn-group mt-5">
+                                            <a href="@($"/looking-for-jobs/edit/{Post.Id}")" class="btn btn-info">Edit</a>
+                                            <a @onclick="@(async()=>
+                                                           {
+                                                               using var resp = await Ez.GetHttpPostResponse("post/removesearch", new Dictionary<string, string>
+                                                               {
+                                                                   {"id", Post.Id }
+                                                               });
+                                                               if (resp.IsSuccessStatusCode) NavMan.NavigateTo("/jobs");
+                                                               else ToastService.ShowToast(await resp.Content.ReadAsStringAsync(), ToastLevel.Error);
+                                                           })" class="btn btn-danger ml-2">Delete</a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            if (Proposal)
+                            {
+                                <Proposal Post="Post" />
+                            }
+
+                            if (Proposals != null && Proposals.Count > 0)
+                            {
+                                foreach (var p in Proposals)
+                                {
+                                    <div class="card-wrapper">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h3>@p.Message</h3><hr />
+                                                <h6>@*@p.Date.ToShortDateString()*@</h6>
+                                                <hr />
+                                                @if (Post.UserId == Session.User?.Id)
+                                                {
+                                                    @*<button @onclick="()=>StartJob(p.Id)" class="btn btn-primary btn-block">Start job</button>*@
+                                                    <button @onclick="()=>Message(p)" class="btn btn-primary btn-block">Message</button>
+                                                }else if (p.UserId == Session.User?.Id)
+                                                {
+                                                    <a class="text-danger" @onclick="()=>DeletePropose(p.Id)">Delete proposal</a>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+        }
+    }
+    else
+    {
+        <h3>No employers have proposed you any jobs yet :(</h3>
+    }
+}
+
+@code {
+    [Parameter] public string Id { get; set; }
+    bool Loading = true;
+    bool Report = false;
+    bool Hire = false;
+    bool Proposal = false;
+    List<SearchProposal> Proposals = new List<SearchProposal>();
+
+    async Task DeletePropose(string id)
+    {
+        using var resp = await Ez.GetHttpPostResponse($"match/removepropose/{id}");
+        if (resp.IsSuccessStatusCode)
+        {
+            NavMan.NavigateTo("/");
+        }
+    }
+
+    async Task StartJob(string id)
+    {
+        using var resp = await Ez.GetHttpPostResponse("match/accept", new Dictionary<string, string>
+        {
+            {"propId", id},
+            {"postId", Id }
+        });
+        if (resp.IsSuccessStatusCode)
+            NavMan.NavigateTo($"/job/ongoing/{await resp.Content.ReadAsStringAsync()}");
+        else ToastService.ShowToast("An error has occured", ToastLevel.Warning);
+    }
+
+    async Task Message(SearchProposal prop)
+    {
+        if (Session.Conversations.Count(x => x.Members.Contains(new ConversationMember
+        {
+            UserId = prop.UserId,
+            Username = prop.Username
+        })) > 1)
+        {
+            NavMan.NavigateTo($"/chat/{Session.Conversations.OrderByDescending(x=>x.Created).First(x => x.Members.Count(x => x.UserId == prop.UserId) > 0).Id}");
+            return;
+        }
+
+        using var resp = await Ez.GetHttpPostResponse("chat/newconv", new Dictionary<string, string>
+        {
+            {"target", prop.UserId},
+            {"jmessage", new ChatMessage
+            {
+                Content = "Conversation has started",
+                UserId = "PLATFORM",
+                DateSent = DateTime.UtcNow
+            }.ToJson() }
+        });
+
+        NavMan.NavigateTo($"/chat/{await resp.Content.ReadAsStringAsync()}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        short cnt = 0;
+        while (!Session.GotInfo)
+        {
+            await Task.Delay(1000);
+            cnt++;
+            if (cnt > 5) break;
+        }
+
+        using var resp = await Ez.GetHttpPostResponse("post/getsearch", new Dictionary<string, string>
+        {
+            {"id", Id}
+        }, false);
+        using var resp2 = await Ez.GetHttpPostResponse($"match/getproposals/post/{Id}", useToken: false);
+
+        if (resp.IsSuccessStatusCode)
+            Post = (await resp.Content.ReadAsStringAsync()).FromJson<SharedLib.Models.JobSearchPost>();
+        else NavMan.NavigateTo("/notfound");
+
+        if (resp2.IsSuccessStatusCode)
+            Proposals = (await resp2.Content.ReadAsStringAsync()).FromJson<List<SearchProposal>>();
+
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+
+        await base.OnInitializedAsync();
+    }
+
+    public SharedLib.Models.JobSearchPost Post { get; set; } = new SharedLib.Models.JobSearchPost();
+}

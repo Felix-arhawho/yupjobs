@@ -1,0 +1,89 @@
+﻿
+
+
+@*@page "/wallet"*@
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+    if (Recharge)
+    {
+        <WalletRecharge Wallet="UserWallet" ResetAction="()=>
+                                                     {
+                                                         Recharge = false;
+                                                         InvokeAsync(StateHasChanged);
+                                                     }" />
+    }
+    else if (Payout)
+    {
+
+    }
+    else
+    {
+
+        <div class="white-bg wallet">
+            <div class="d-flex flex-column align-items-center flex-md-row justify-content-between">
+                <div class="wallet_balance">
+                    <div class="funds">
+                        <div class="money">@(UserWallet.AvailableFunds + " " + UserWallet.Currency.GetName())</div>
+                        <p>Available Funds</p>
+                    </div>
+                    @if (UserWallet.IncomingFunds > 0)
+                    {
+                        <div class="funds">
+                            <div class="money">@(UserWallet.IncomingFunds + " " + UserWallet.Currency.GetName())</div>
+                            <p>Incoming Funds</p>
+                        </div>
+                    }
+                    @if (UserWallet.OutgoingFunds > 0)
+                    {
+                        <div class="funds">
+                            <div class="money">@(UserWallet.OutgoingFunds + " " + UserWallet.Currency.GetName())</div>
+                            <p>Outgoing Funds</p>
+                        </div>
+                    }
+                    <hr />
+                    <div class="credits">
+                        <div class="money">@UserWallet.Credits @UserWallet.Currency.GetName()</div>
+                        <p>Credits <i><a href="/creditinfo" target="_blank">more info</a></i></p>
+                    </div>
+                </div>
+                <div class="add_more">
+                    <button @onclick="()=> Recharge = true" class="btn btn-info btn-lg">+ Add funds</button>
+                    <hr />
+                    <button @onclick="@(()=>NavMan.NavigateTo("/payout/"+UserWallet.Id))" class="btn btn-info btn-lg">- Payout</button>
+                </div>
+            </div>
+        </div>
+    }
+
+}
+
+@code {
+    [Parameter] public UserWallet UserWallet { get; set; }
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse("wallet/get", new Dictionary<string, string>
+        {
+            {"id", UserWallet.Id }
+        });
+
+        if (resp.IsSuccessStatusCode)
+        {
+            UserWallet = (await resp.Content.ReadAsStringAsync()).FromJson<UserWallet>();
+        }
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    void SetRecharge() => Recharge = false;
+
+    bool Payout = false;
+    bool Recharge = false;
+}

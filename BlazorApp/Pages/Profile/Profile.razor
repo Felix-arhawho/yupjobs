@@ -1,0 +1,159 @@
+﻿
+@page "/profile"
+
+@if (Session.Profile is null)
+{
+    <Loader />
+}
+else
+{
+
+    <div class="d-flex flex-column flex-md-row justify-content-start align-items-stretch">
+        <div class="">
+            <div class="profile-wrapper">
+                <div class="white-bg">
+                    <div class="img">
+                        <img src="@Session.Profile?.ProfilePicture" style="max-width:95%" />
+                    </div>
+                    <div class="info">
+                        <div class="username">
+                            @Session.Profile?.Username
+                        </div>
+                        <div class="name">
+                            <span>@Session.Profile?.FirstName</span> <span>@Session.Profile?.LastName</span>
+                        </div>
+                        <div class="dob">
+                            @(Session.Profile is null ? "18 years" : $"{DateTime.Today.Year - Session.Profile.DoB.Year} years")
+                        </div>
+                    </div>
+                </div>
+                <div class="options">
+                    <a href="/profile/edit">Edit profile</a>
+                </div>
+            </div>
+        </div>
+        <div class="flex-grow-1 ml-md-5">
+            <div class="review-panel">
+                <div class="white-bg">
+                    <span class="heading">User Rating</span>
+                    <span class="oi oi-star checked"></span>
+                    <span class="oi oi-star checked"></span>
+                    <span class="oi oi-star checked"></span>
+                    <span class="oi oi-star checked"></span>
+                    <span class="oi oi-star"></span>
+                    <p>4.1 average based on 254 reviews.</p>
+                    <hr style="border:1px solid #f1f1f1">
+                    <div class="row">
+                        <div class="side">
+                            <div>5 star</div>
+                        </div>
+                        <div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-5"></div>
+                            </div>
+                        </div>
+                        <div class="side right">
+                            <div>150</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="side">
+                            <div>4 star</div>
+                        </div>
+                        <div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-4"></div>
+                            </div>
+                        </div>
+                        <div class="side right">
+                            <div>63</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="side">
+                            <div>3 star</div>
+                        </div>
+                        <div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-3"></div>
+                            </div>
+                        </div>
+                        <div class="side right">
+                            <div>15</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="side">
+                            <div>2 star</div>
+                        </div>
+                        <div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-2"></div>
+                            </div>
+                        </div>
+                        <div class="side right">
+                            <div>6</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="side">
+                            <div>1 star</div>
+                        </div>
+                        <div class="middle">
+                            <div class="bar-container">
+                                <div class="bar-1"></div>
+                            </div>
+                        </div>
+                        <div class="side right">
+                            <div>20</div>
+                        </div>
+                    </div>
+                    <hr style="border:1px solid #f1f1f1">
+                    <button @onclick="ToggleReviews" class="btn btn-secondary">Show reviews</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-bio">
+        <div class="white-bg">
+            <h3>Bio:</h3>
+            <p>
+                @Session.Profile?.TextBio
+            </p>
+        </div>
+    </div>
+    <div class="reviews @reviewClass">
+        <ProfileReviews />
+    </div>
+}
+
+
+
+@code {
+    private bool showReviews = false;
+    private string reviewClass => showReviews ? "is-active" : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.Token is null) NavMan.NavigateTo("/");
+        if (!await Session.Token.Valid()) NavMan.NavigateTo("/login");
+        while (!Session.GotInfo) await Task.Delay(1000).ConfigureAwait(true);
+
+        if (Session.Profile == null) NavMan.NavigateTo("/profile/new");
+
+        //while (!Session.GotInfo)
+        //{
+        //    Debug.WriteLine("GOT INFO => " + Session.GotInfo.ToString());
+        //    Debug.WriteLine("STILL WAITING FOR SESSION INFO");
+        //    await Task.Delay(1000);
+        //}
+
+        await base.OnInitializedAsync();
+    }
+
+    private void ToggleReviews()
+    {
+        showReviews = !showReviews;
+    }
+}

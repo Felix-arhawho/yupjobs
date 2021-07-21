@@ -1,0 +1,240 @@
+﻿@using SharedLib.Models
+@page "/jobs"
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+
+    <h1 class="top-header">Job listings</h1>
+    <div class="search_filter">
+        <form @onsubmit="Search">
+            <div id="custom-search-input">
+                <div class="input-group col-md-12">
+                    <input type="text" class="form-control input-lg" placeholder="Search..." @bind="SearchFilter.Search" />
+                    <button class="btn btn-info btn-lg" type="submit">
+                        <i class="oi oi-magnifying-glass"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+        <button class="mt-1 btn btn-info d-inline-block d-md-none" @onclick="ToggleFilterMenu">Filters</button>
+    </div>
+    <div class="d-flex job-listing-flex">
+        <div class="left @FilterMenuCssClass">
+            <div class="filters white-bg">
+                <div class="filter_list d-flex">
+                    <div class="filter checkbox-filter">
+                        @*<div class="filter_name">Categories:</div>
+                        @foreach (var i in SearchFilter.Categories)
+                        {
+                            if (i is JobCategory.Any) continue;
+                            <div class="form-check">
+                                <input class="form-check-input" value="cat1" type="checkbox" id="cat1">
+                                <label class="form-check-label" for="cat1">@i</label>
+                            </div>
+                        }*@
+                    </div>
+                    <div class="filter select-filter">
+                        <div class="form-group">
+                            <label>Category:</label>
+                            <div class="selected-tags">
+                                <select @bind="SearchFilter.Categories[0]">
+                                    @foreach (var i in Enum.GetValues(typeof(JobCategory)))
+                                    {
+                                        //if ((JobCategory)i == JobCategory.Any) continue;
+                                        <option value="@i">@i</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="filter_name">Tags:</div>
+                        <div class="form-group">
+                            <label>Selected tags:</label>
+                            <div class="selected-tags">
+                                @foreach (var i in SearchFilter.Tags)
+                                {
+                                    <div class="tag-pill">
+                                        @i
+                                        <span @onclick="() => SearchFilter.Tags.Remove(i)" class="remove">✕</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="Tags">Tags</label>
+                            <input type="text"
+                                   @bind-value:event="oninput"
+                                   @bind-value="filterTag"
+                                   class="form-control" id="tags" name="tags" />
+                        </div>
+                        <div class="form-group">
+                            <label>Recommended tags:</label>
+                            <div class="recommended-tags">
+                                @foreach (var i in RecommendedTags)
+                                {
+                                    if (SearchFilter.Tags.Contains(i.TagName)) continue;
+                                    <div @onclick="()=> SearchFilter.Tags.Add(i.TagName)" class="tag-pill">
+                                        @i.TagName <b>@i.UseCount</b>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter from-to-filter">
+                        <div class="filter_name">Work duration:</div>
+                        <div class="form-group">
+                            <label for="from">Max work duration</label>
+                            <input type="number" class="form-control" id="to" name="to" @bind="SearchFilter.MaxDuration" />
+                        </div>
+                    </div>
+                    <div class="filter">
+                        <div class="filter_name">Max date:</div>
+                        <div class="form-group">
+                            <label for="from">Max date posted</label>
+                            @{
+                                var dt = DateTime.Today-TimeSpan.FromDays(31);
+                            }
+                            <input type="date" min="@dt.Day-@dt.Month-@dt.Year" class="form-control" @bind="SearchFilter.MaxDate" id="date" name="date" />
+                        </div>
+                    </div>
+                    <div class="filter">
+                        <div class="filter_name">How many results:</div>
+                        <div class="form-group">
+                            <label for="max">Results</label>
+                            <input type="number" class="form-control" id="max" name="max" @bind="SearchFilter.MaxCount" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="right">
+            @{
+                var cnt = 1;
+            }
+            @foreach (var post in Session.CurrentJobPosts.OrderByDescending(x=>x.PostDate))
+            {
+                <div class="job-listing white-bg @post.Active" @onclick="@(()=>NavMan.NavigateTo($"/post/hire/{post.Id}"))">
+                    <div class="top">
+                        <span class="date">Added: @post.PostDate</span>
+                        <h3>@post.Title</h3>
+                        <div class="categories">
+                            @foreach (var category in post.Categories)
+                            {
+                                <span>@category, </span>
+                            }
+                        </div>
+                        <p>@post.Description</p>
+                    </div>
+                    <div class="bottom">
+                        <div class="salary">
+                            @post.ProposedSalary[0] - @post.ProposedSalary[1] @post.Currency
+                        </div>
+                        <div class="tags">
+                            @foreach (var tag in post.Tags)
+                            {
+                                <span class="tag">@tag</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+                if (cnt is 1 || cnt is 5 || cnt is 10 || cnt is 15 || cnt is 20 || cnt is 25)
+                {
+                    <div class="container-fluid">
+                        <amp-ad width="100vw" height="320"
+                                type="adsense"
+                                data-ad-client="ca-pub-5294816076309463"
+                                data-ad-slot="1303136282"
+                                data-auto-format="rspv"
+                                data-full-width="">
+                            <div overflow=""></div>
+                        </amp-ad>
+                    </div>
+                }
+                cnt++;
+            }
+        </div>
+    </div>
+}
+
+@code {
+    bool Loading = false;
+
+    List<DbTag> RecommendedTags = new List<DbTag>();
+
+    string filterTag
+    {
+        get => TagVal; set
+        {
+            TagVal = value;
+            _ = TagSearch();
+        }
+    }
+    string TagVal = string.Empty;
+
+    async Task TagSearch()
+    {
+        if (string.IsNullOrEmpty(TagVal)) return;
+
+        using var resp = await Ez.GetHttpPostResponse($"tags/get/{TagVal}");
+        Debug.WriteLine(await resp.Content.ReadAsStringAsync());
+        if (resp.IsSuccessStatusCode)
+            RecommendedTags = (await resp.Content.ReadAsStringAsync()).FromJson<List<DbTag>>();
+        RecommendedTags.Add(new DbTag()
+        {
+            TagName = TagVal,
+            UseCount = 0,
+        });
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Loading = Session.CurrentJobPosts.Count is 0;
+        await InvokeAsync(StateHasChanged);
+
+        if (Loading)
+        {
+            using var resp = await Ez.GetHttpPostResponse("post/gethire", null, false);
+            if (resp.IsSuccessStatusCode)
+                Session.CurrentJobPosts = (await resp.Content.ReadAsStringAsync()).FromJson<List<SharedLib.Models.JobPost>>();
+        }
+
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+        await base.OnInitializedAsync();
+    }
+
+    async Task Search()
+    {
+        Loading = true;
+        await InvokeAsync(StateHasChanged);
+
+        using var resp = await Ez.GetHttpPostResponse("post/gethire", new Dictionary<string, string>()
+        {
+            {"jfilter", SearchFilter.ToJson() }
+        });
+
+        Debug.WriteLine(await resp.Content.ReadAsStringAsync());
+
+        if (resp.IsSuccessStatusCode)
+            Session.CurrentJobPosts = (await resp.Content.ReadAsStringAsync()).FromJson<List<SharedLib.Models.JobPost>>();
+
+        Loading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public static JobPostFilter SearchFilter = new JobPostFilter();
+    //public static List<SharedLib.Models.JobPost> SearchResults = new List<SharedLib.Models.JobPost>();
+
+    public static bool filterMenu = false;
+
+    private string FilterMenuCssClass => filterMenu ? "active" : null;
+
+    public static void ToggleFilterMenu()
+    {
+        filterMenu = !filterMenu;
+    }
+}

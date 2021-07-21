@@ -1,0 +1,42 @@
+﻿@page "/chat/{ConvId}"
+<h3>Chat</h3>
+
+<input @bind="ConvId" />
+<button @onclick="StateHasChanged">Select conversation</button>
+<button @onclick="StateHasChanged">Refresh</button>
+
+<div class="container">
+    @foreach (var msg in Db.MessagesCollection.All(x => x.ConvId == ConvId).OrderByDescending(x => x.DateSent))
+    {
+        <div class="message">
+            <h5>@msg.Content - @msg.DateSent.ToShortDateString() @msg.DateSent.ToShortTimeString()</h5>
+            <hr />
+            <h6>Sender: @msg.UserId</h6>
+        </div>
+    }
+    <hr />
+    <textarea @bind="NewMessage"></textarea>
+    <button @onclick="@(async ()=>
+                        {
+                            var user = await StorageService.GetItemAsync<StaffUser>("user");
+                            var msg = new ChatMessage()
+                            {
+                                DateSent = DateTime.UtcNow,
+                                UserId = user.Id,
+                                Content = NewMessage,
+                                ConvId = ConvId,
+                                IsStaff = true
+                            };
+                            Db.MessagesCollection.InsertOne(msg);
+                            NewMessage = string.Empty;
+                            await InvokeAsync(StateHasChanged);
+                        })">
+        Send Message
+    </button>
+</div>
+
+@code {
+    [Parameter] public string ConvId { get; set; }
+
+    string NewMessage = string.Empty;
+}

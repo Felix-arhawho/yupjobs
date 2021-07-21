@@ -1,0 +1,69 @@
+﻿@page "/interval/view/{OrderId}"
+
+@if (Loading)
+{
+    <Loader></Loader>
+}
+else
+{
+    <h3>Interval Payment Order </h3>
+    <div class="white-bg">
+        
+        <h4>@Order.Title</h4>
+        <h5>@Order.Payment @Order.Currency</h5>
+        <ul>
+            <li>Current status: @(Order.Active ? "Ongoing" : "Cancelled")</li>
+            <li>Last payment: @Order.LastPayment.Print()</li>
+            <li>Next payment: @((Order.NextPayment).Print())</li>
+        </ul>
+        <button class="btn btn-info" @onclick="@(async()=>
+                        {
+                            Loading = true;
+                            await Ez.GetHttpPostResponse("interval/stop", new Dictionary<string, string>
+                            {
+                                {"id", Order.Id },
+                                {"jobId", Order.JobId }
+                            });
+                            using var resp = await Ez.GetHttpPostResponse("interval/get", new Dictionary<string, string>
+                            {
+                                {"id", OrderId }
+                            });
+                            if (resp.IsSuccessStatusCode)
+                            {
+                                Order = (await resp.Content.ReadAsStringAsync()).FromJson<IntervalPaymentOrder>();
+                            }
+
+                            Loading = false;
+                            await InvokeAsync(StateHasChanged);
+                        })">
+            Stop payments
+        </button>
+        <hr/>
+        <button class="btn btn-info" @onclick="@(()=> NavMan.NavigateTo($"/interval/edit/{Order.Id}"))">Edit payments</button>
+       
+    </div>
+}
+
+
+
+@code {
+    [Parameter] public string OrderId { get; set; }
+    bool Loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var resp = await Ez.GetHttpPostResponse("interval/get", new Dictionary<string, string>
+        {
+            {"id", OrderId }
+        });
+        if (resp.IsSuccessStatusCode)
+        {
+            Order = (await resp.Content.ReadAsStringAsync()).FromJson<IntervalPaymentOrder>();
+        }
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    public IntervalPaymentOrder Order { get; set; }
+}

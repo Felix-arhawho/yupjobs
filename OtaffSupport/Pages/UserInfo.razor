@@ -1,0 +1,104 @@
+﻿@page "/info/user/{Id}"
+
+@if (Loading)
+{
+    <Loader />
+}
+else
+{
+    <button class="btn btn-info btn-block" @onclick="Reset">Go back</button>
+    <hr />
+    <input style="width: 50%" placeholder="Ban reason" @bind="BanReason"/>
+    <button class="btn btn-info btn-block" @onclick="()=>
+                                                     {
+                                                         var upd = new UpdateDefinitionBuilder<User>().Set(x => x.Status, UserStatus.Banned);
+                                                         Db.UsersCollection.UpdateOne(x => x.Id == User.Id, upd);
+                                                         Reset();
+                                                     }">BAN USER</button>
+    <hr />
+    <h3>UserInfo</h3>
+    <hr />
+    @Newtonsoft.Json.JsonConvert.SerializeObject(User, Newtonsoft.Json.Formatting.Indented);
+    <hr />
+
+    <h3>Bills</h3>
+    <hr />
+    <div class="container" style="overflow: auto">
+        @foreach (var i in Db.UserBillsCollection.All(x => x.UserId == User.Id))
+        {
+            <div class="container-fluid">
+                <h4>@i.Id - @(i.DateIssued.ToLongDateString()) - @i.TotalAmountRequested @i.Currency</h4>
+                <h5>Paid: @i.Paid @i.TotalAmountAllocated</h5>
+                <h5>Framework: @i.Framework</h5>
+                <h5>Status: @i.Status</h5>
+            </div>
+        }
+    </div>
+    <hr />
+
+    <h3>Transactions</h3>
+    <hr />
+    <div class="container" style="overflow: auto">
+        @foreach (var i in Db.WalletTransactionsCollection.All(x => x.UserId == User.Id || x.ReceiverId == User.Id || x.SenderUsername == User.Username))
+        {
+            <div class="container-fluid">
+                <h4>@i.Id - @(i.DateCompleted.ToString() ?? "Not completed") - @i.Amount @i.Currency - @i.Type</h4>
+                <h5>Sender: @i.SenderUsername</h5>
+                <h5>Receiver: @i.ReceiverUsername</h5>
+            </div>
+        }
+    </div>
+    <hr />
+
+    <h3>Payouts</h3>
+    <hr />
+    <div class="container" style="overflow: auto">
+        @foreach (var i in Db.BankPayoutActions.All(x=>x.UserId==User.Id))
+        {
+            <div class="container-fluid">
+                <h5>@i.DateCreated.ToLongDateString() - Transaction: @i.TransactionId - @i.Amount @i.Currency 
+                <br />
+                - Completed: @i.Executed</h5>
+            </div>
+        }
+    </div>
+    <hr />
+
+    <h3>Jobs</h3>
+    <hr />
+    <div class="container" style="overflow: auto">
+        @foreach(var i in Db.OngoingJobsCollection.All(x => x.EmployeeId == User.Id || x.EmployerId == User.Id).OrderByDescending(x=>x.StartedOn))
+        {
+            <div class="container-fluid">
+                <h4>@i.Id - @Enum.GetName(i.Status) - @i.JobTitle</h4><br />
+                <button @onclick="@(()=>NavMan.NavigateTo($"/modjob/{i.Id}"))">Moderate job</button>
+            </div>
+            <hr />
+        }
+    </div>
+}
+
+
+
+
+
+@code {
+    bool Loading = true;
+    string BanReason = string.Empty;
+    
+    [Parameter] public string Id { get; set; }
+    [Parameter] public Action Reset { get; set; }
+
+    User User = null;
+    StaffUser Staff = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        User = Db.UsersCollection.First(x => x.Id == Id);
+        if (User is null) Reset();
+        Staff = await StorageService.GetItemAsync<StaffUser>("user");
+
+        Loading = false;
+        await base.OnInitializedAsync();
+    }
+}

@@ -1,0 +1,164 @@
+﻿@page "/upanel"
+
+<h3>User Panel</h3>
+<hr />
+<input placeholder="Username/Email" @bind="id" />
+<button @onclick="()=> User = Db.UsersCollection.First(x => x.Username == id || x.Email == id)">Search</button>
+<hr />
+@if (User is null)
+{
+    <h4>Search for a user</h4>
+}
+else
+{
+    User.HashedPassword = null;
+    <h5>@User.Username</h5>
+    <hr />
+    <h6>@Newtonsoft.Json.JsonConvert.SerializeObject(User, Newtonsoft.Json.Formatting.Indented)</h6>
+    <br />
+    <h5>Actions</h5>
+    <hr />
+    <button @onclick="()=>ActionT=1">BAN USER</button>
+    <button @onclick="()=>ActionT=2">ADD MONEY TO ACCOUNT</button>
+    <button @onclick="()=>ActionT=3">REMOVE MONEY FROM ACCOUNT</button>
+    <button @onclick="()=>ActionT=4">SEND EMAIL</button>
+    <button @onclick="()=>ActionT=5">MODIFY PROFILE</button>
+
+    <hr />
+    switch (ActionT)
+    {
+        case 1:
+            <h3>BAN USER</h3>
+            <br />
+            <input placeholder="Reason" @bind="banReason" /><button @onclick="@(()=>
+                                                                               {
+                                                                                   using var s = Db.Client.StartSession();
+                                                                                   s.StartTransaction();
+                                                                                   Db.UsersCollection.UpdateOne(s, x=>x.Id==User.Id, new UpdateDefinitionBuilder<User>().Set(x=>x.Verified, false).Set(x=>x.Status, UserStatus.Banned));
+                                                                                   Db.StaffActions.InsertOne(new StaffAction
+                                                                                   {
+                                                                                       Data = new Dictionary<string, dynamic>
+                                                                                         {
+                                                                                             {"type", "ban" },
+                                                                                             {"reason", banReason },
+                                                                                         },
+                                                                                       Date = DateTime.UtcNow,
+                                                                                       StaffId = Staff.Id
+                                                                                   });
+                                                                               })"></button>
+            break;
+        case 2:
+            <h3>ADD MONEY</h3>
+            <br />
+            <input placeholder="How much" type="number" @bind="AddAmount" /><br />
+            <input placeholder="Confirm Amount" @bind="AmountConfirm" type="number" />
+            <h5>Confirm currency</h5>
+            <br />
+            foreach (var c in Enum.GetNames<Currency>())
+            {
+                <button class="@(AddCurrency == Enum.Parse<Currency>(c) ? "btn-info" : "")" @onclick="()=>AddCurrency=Enum.Parse<Currency>(c)">@c</button>
+            }
+            <hr />
+            <h5>Confirm currency</h5>
+            <br />
+            foreach (var c in Enum.GetNames<Currency>())
+            {
+                <button class="@(CurrencyConfirm == Enum.Parse<Currency>(c) ? "btn-info" : "")" @onclick="()=>CurrencyConfirm=Enum.Parse<Currency>(c)">@c</button>
+            }
+            <button @onclick="@(()=>
+                                {
+                                    using var s = Db.Client.StartSession();
+                                    s.StartTransaction();
+                                    Db.StaffActions.InsertOne(s, new StaffAction
+                                    {
+                                        Data = new Dictionary<string, dynamic>
+                                        {
+                                            {"type", "moneyadd"},
+                                            {"amount", AmountConfirm },
+                                            {"currency", CurrencyConfirm }
+                                        },
+                                        Date = DateTime.UtcNow,
+                                        StaffId = Staff.Id,
+                                    });
+                                    WalletCtl.CreateTransferFromPlatform(User, CurrencyConfirm, AmountConfirm, s: s).Wait();
+                                    s.CommitTransaction();
+                                    ActionT = 0;
+                                    InvokeAsync(StateHasChanged);
+                                })">
+                INITIATE TRANSFER
+            </button>
+            break;
+        case 3:
+            <h3>REMOVE MONEY</h3>
+            <hr />
+            <p>TODO</p>
+            break;
+        case 4:
+            <h3>SEND EMAIL</h3>
+            <input placeholder="Subject" @bind="subject" />
+            <InputTextArea DisplayName="Body" @bind-value="body" />
+            <br />
+            <a href="https://zoho.com" target="_blank">Send email</a>
+            break;
+        case 5:
+            <h3>MODIFY PROFILE INFORMATION</h3>
+            <hr />
+            <label>First name</label>
+            <input @bind="firstName" />
+            <label>Last name</label>
+            <input @bind="lastName" />
+            <label>DoB</label>
+            <input type="date" @bind="DoB" />
+            <button @onclick="@(()=>
+                                {
+                                    var upd = new UpdateDefinitionBuilder<Profile>().Set(x=>x.LastName, lastName).Set(x=>x.FirstName, firstName).Set(x=>x.DoB, DoB);
+                                    Db.ProfilesCollection.UpdateOne(x => x.UserId == User.Id, upd);
+                                    Db.StaffActions.InsertOne(new StaffAction
+                                    {
+                                        Data = new Dictionary<string, dynamic>
+                                        {
+                                            {"type", "Info Change" },
+                                            {"firstName", firstName },
+                                            {"lastName", lastName },
+                                            {"dob", DoB }
+                                        },
+                                        StaffId = Staff.Id,
+                                        Date = DateTime.UtcNow,
+                                    });
+                                    ActionT = 0;
+                                    InvokeAsync(StateHasChanged);
+                                })">
+                Submit
+            </button>
+            break;
+    }
+}
+
+
+@code {
+
+    short ActionT = 0;
+    string banReason = string.Empty;
+
+    string id = string.Empty;
+    User User = null;
+    StaffUser Staff = null;
+
+    DateTime DoB = DateTime.Today;
+    string firstName = string.Empty;
+    string lastName = string.Empty;
+
+    string subject = string.Empty;
+    string body = string.Empty;
+
+    decimal AddAmount = 0;
+    decimal AmountConfirm = 0;
+    Currency AddCurrency = Currency.EUR;
+    Currency CurrencyConfirm = Currency.USD;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Staff = await StorageService.GetItemAsync<StaffUser>("user");
+        await base.OnInitializedAsync();
+    }
+}

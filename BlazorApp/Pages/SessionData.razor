@@ -1,0 +1,27 @@
+﻿@page "/sessioninfo"
+
+<h3>TestPage</h3>
+
+<div class="container">
+    <h4>Logged in: @Session.LoggedIn</h4><br />
+    <h4>User: @Session.User?.ToJson()</h4><br />
+    <h4>Subscription: @Session.Subscription?.ToJson()</h4><br />
+    @*<h4>Logged in: @Session.LoggedIn</h4><br />*@
+
+</div>
+
+
+@code {
+
+    public static bool TaskStarted = false;
+
+    protected override void OnInitialized()
+    {
+        
+
+        base.OnInitialized();
+    }
+
+    //string sessionstr = string.Empty;
+
+}

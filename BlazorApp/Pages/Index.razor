@@ -1,0 +1,140 @@
+﻿@*@page "/"*@
+
+
+    <div class="white-bg">
+        <center>
+            <h1>Welcome to YupJobs</h1>
+            <p>Find your work or post job offers</p>
+            <hr />
+            <a href="/jobs/new" class="btn btn-lg btn-primary btn-block">Post job offer</a>
+            <a href="/jobs" class="btn btn-lg btn-primary btn-block">Find a job</a>
+            <div class="btn-group" style="width: 100%;">
+            </div>
+        </center>
+    </div>
+    <div class="d-flex index-lists">
+        <div class="card flex-grow-1" >
+            <div class="card-body">
+                <h3>Latest job offers - <a href="/jobs">See more</a></h3>
+                @if (Loading)
+                {
+                    <Loader />
+                }
+                else
+                {
+                    @foreach (var post in Session.CurrentJobPosts)
+                    {
+                        <div class="job-listing white-bg @post.Active" @onclick="@(() => NavMan.NavigateTo($"/post/hire/{post.Id}"))">
+                            <div class="top">
+                                <span class="date">Added: @post.PostDate</span>
+                                <h3>@post.Title</h3>
+                                <div class="categories">
+                                    @foreach (var category in post.Categories)
+                                    {
+                                        <span>@category, </span>
+                                    }
+                                </div>
+                                <p>@post.Description</p>
+                            </div>
+                            <div class="bottom">
+                                <div class="salary">
+                                    @post.ProposedSalary[0] - @post.ProposedSalary[1] @post.Currency
+                                </div>
+                                <div class="tags">
+                                    @foreach (var tag in post.Tags)
+                                    {
+                                        <span class="tag">@tag</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+        <div class="card flex-grow-1">
+            <div class="card-body">
+                <h3>Latest freelancer profiles - <a href="/looking-for-jobs">See more</a></h3>
+                @if (Loading2)
+                {
+                    <Loader />
+                }
+                else
+                {
+                    foreach (var post in Session.CurrentJobSearchPosts)
+                    {
+                        <div class="job-listing white-bg @post.Active" @onclick="@(()=>NavMan.NavigateTo($"/looking-for-jobs/details/{post.Id}"))">
+                            <div class="top">
+                                <span class="date">Added: @post.PostDate</span>
+                                <h3>@post.Title</h3>
+                                <div class="categories">
+                                    @foreach (var cat in post.Categories)
+                                    {
+                                        <span>@cat,</span>
+                                    }
+                                </div>
+                                <p>@post.Description</p>
+                            </div>
+                            <div class="bottom">
+                                <div class="salary">
+                                    @post.RequestedSalary[0] @post.Currency
+                                </div>
+                                <div class="tags">
+                                    @foreach (var tag in post.Tags)
+                                    {
+                                        <span class="tag">@tag</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+            <center>
+                <amp-ad width="100vw" height="320"
+                        type="adsense"
+                        data-ad-client="ca-pub-5294816076309463"
+                        data-ad-slot="1303136282"
+                        data-auto-format="rspv"
+                        data-full-width="">
+                    <div overflow=""></div>
+                </amp-ad>
+            </center>
+            </div>
+        </div>
+
+@code {
+    bool Loading = false;
+    bool Loading2 = false;
+
+    public static JobPostFilter SearchFilter = new JobPostFilter();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        SearchFilter.MaxCount = 5;
+        Loading = Session.CurrentJobPosts.Count is 0;
+        Loading2 = Session.CurrentJobSearchPosts.Count is 0;
+        await InvokeAsync(StateHasChanged);
+
+        if (Loading)
+        {
+            using var resp = await Ez.GetHttpPostResponse("post/gethire", null, false);
+            if (resp.IsSuccessStatusCode)
+                Session.CurrentJobPosts = (await resp.Content.ReadAsStringAsync()).FromJson<List<SharedLib.Models.JobPost>>();
+        }
+
+        if (Loading2)
+        {
+            using var resp2 = await Ez.GetHttpPostResponse("post/getsearch", null, false);
+            if (resp2.IsSuccessStatusCode)
+                Session.CurrentJobSearchPosts = (await resp2.Content.ReadAsStringAsync()).FromJson<List<SharedLib.Models.JobSearchPost>>();
+        }
+
+        Loading = false;
+        Loading2 = false;
+        await InvokeAsync(StateHasChanged);
+        await base.OnInitializedAsync();
+    }
+}

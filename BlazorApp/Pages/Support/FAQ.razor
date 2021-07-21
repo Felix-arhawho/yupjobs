@@ -1,0 +1,85 @@
+﻿<div class="white-bg">
+    <h1>Quick help</h1>
+    <div class="help-question">
+        <button class="accordion @faqActive0" @onclick="ToggleFAQ0">Who can work as a freelancer</button>
+        <div class="panel pt-3 @faqActive0">
+            <p>
+                Due to some technical limitations, you can only work as a freelancer from the following countries:
+                <ul>
+                    <li>France</li>
+                    <li>United Kingdom</li>
+                    <li>Germany</li>
+                    <li>Netherlands</li>
+                    <li>Belgium</li>
+                    <li>Luxembourg</li>
+                    <li>Finland</li>
+                    <li>Italy</li>
+                    <li>Spain</li>
+                    <li>Hungary</li>
+                    <li>Sweden</li>
+                    <li>Ireland</li>
+                    <li>Portugal</li>
+                    <li>Romania</li>
+                    <li>Malta</li>
+                    <li>Estonia</li>
+                    <li>Bulgaria</li>
+                    <li>Lithuania</li>
+                    <li>Chzech Republic</li>
+                    <li>Latvia</li>
+                    <li>Slovakia</li>
+                    <li>Slovenia</li>
+                    <li>Switzerland</li>
+                    <li>Greece</li>
+                    <li>Cyprus</li>
+                    <li>Poland</li>
+                    <li>Denmark</li>
+                    <li>Norway</li>
+                    <li>Austria</li>
+                </ul>
+            </p>
+        </div>
+    </div>
+    <div class="help-question">
+        <button class="accordion @faqActive1" @onclick="ToggleFAQ1">Job payments</button>
+        <div class="panel pt-3 @faqActive1">
+            <p>
+                You can create a new payment for an ongoing job by going to the <b>Personal Menu</b>(top right) <b>> My jobs</b> and then create a payment <br />
+                You can either pay a freelancer directly with direct payments or hold the funds in escrow and pay them out progressively.
+                Once you have paid for a Job Payment, you cannot get a refund as the funds are in the system, but you can get your money back if you are based in EUR
+                by doing a <u @onclick="()=> { ToggleFAQ1(); ToggleFAQ2(); }">payout</u>
+            </p>
+        </div>
+    </div>
+    <div class="help-question">
+        <button class="accordion @faqActive2" @onclick="ToggleFAQ2">Payouts</button>
+        <div class="panel pt-3 @faqActive2">
+            <p>
+                If you are based in EU (Including Norway and Sweden), you can receive payouts
+            </p>
+        </div>
+    </div>
+
+</div>
+
+@code{
+    private string faqActive0 => collapseFaq0 ? "active" : null;
+    public static bool collapseFaq0 = false;
+    public static void ToggleFAQ0()
+    {
+        collapseFaq0 = !collapseFaq0;
+    }
+
+    private string faqActive1 => collapseFaq1 ? "active" : null;
+    public static bool collapseFaq1 = false;
+    public static void ToggleFAQ1()
+    {
+        collapseFaq1 = !collapseFaq1;
+    }
+
+    private string faqActive2 => collapseFaq2 ? "active" : null;
+    public static bool collapseFaq2 = false;
+    public static void ToggleFAQ2()
+    {
+        collapseFaq2 = !collapseFaq2;
+    }
+}

@@ -1,0 +1,41 @@
+﻿@page "/ticketpool"
+
+<center>
+    <h3>Tickets Pool</h3>
+    <hr />
+    @foreach(var ticket in Db.SupportTickets.Find(x=> !x.StaffAssigned).ToList().OrderBy(x => x.DateSent))
+    {
+        <div class="container-fluid ticketpool">
+            <h4>@ticket.RequestTitle</h4><hr />
+            <p>@ticket.Message</p><hr />
+            <button @onclick="@(()=>
+                                {
+                                    var upd = new UpdateDefinitionBuilder<SupportTicket>()
+                                    .Set(x=>x.StaffAssigned, true)
+                                    .Set(x=>x.StaffId, User.Id)
+                                    .Set(x=>x.StaffUsername, User.Username);
+
+                                    Db.SupportTickets.UpdateOne(x => x.Id == ticket.Id, upd);
+                                    NavMan.NavigateTo("/ticket/" + ticket.Id);
+
+                                })" class="btn btn-block btn-success">Claim</button>
+        </div>
+    }
+
+
+</center>
+
+@code { 
+    StaffUser User = null;
+    protected override async Task OnInitializedAsync()
+    {
+        User = await StorageService.GetItemAsync<StaffUser>("user");
+        if (User is null)
+        {
+
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+}
